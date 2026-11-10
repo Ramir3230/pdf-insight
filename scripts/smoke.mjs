@@ -160,10 +160,10 @@ async function checkApiLogin() {
   }
   const allowOrigin = post.headers.get("Access-Control-Allow-Origin");
   const body = await post.text();
-  // Zaślepka z bloku 1 odpowiada 501 not_implemented. Inny kod oznacza, że backend robi coś
-  // innego niż oczekujemy — np. przepuścił puste body dalej.
-  if (post.status !== 501 || !body.includes('"not_implemented"')) {
-    fail(`API: POST {} zwraca ${post.status}, oczekiwano 501 not_implemented`);
+  // Puste body backend odrzuca kodem 400 invalid_request, zanim cokolwiek wyśle do Claude.
+  // Inny kod oznacza, że backend robi coś innego niż oczekujemy — np. przepuścił puste body.
+  if (post.status !== 400 || !body.includes('"invalid_request"')) {
+    fail(`API: POST {} zwraca ${post.status}, oczekiwano 400 invalid_request`);
   } else if (allowOrigin !== ALLOWED_ORIGIN) {
     fail(`API: POST z ${ALLOWED_ORIGIN} bez nagłówka Allow-Origin (jest: ${allowOrigin})`);
   } else {
