@@ -93,7 +93,7 @@ tymczasowym sesji: bez zmian w systemie, bez instalacji globalnych.
       które musiały oblać: `check-dist` bez workera i bez odwołania; `smoke` na obecnych Pages
       i na kopii bez pliku workera (serwer oddał HTML z kodem 200 — stąd sprawdzanie typu);
       mutacje kodu — każdy test czerwienieje na swoim błędzie.
-- [ ] **4. Backend** (F-03, F-04) — `api/analyze.ts` na Vercel: POST z tekstem, nazwą pliku
+- [x] **4. Backend** (F-03, F-04; 11.11, ok. 02:45) — `api/analyze.ts` na Vercel: POST z tekstem, nazwą pliku
       i liczbą stron; CORS tylko dla `https://ramir3230.github.io`; limit rozmiaru tekstu i limit
       żądań na IP; Claude ze structured output; treść PDF oddzielona od instrukcji; jedna ponowna
       próba; błędy po polsku.
@@ -131,6 +131,18 @@ ANTHROPIC_API_KEY` wpisuje sam — agent nie widzi wartości.
       Testy SDK bez sieci: podstawiony `fetch` w kliencie Anthropic — sprawdza body żądania
       i parsowanie prawdziwym SDK. `scripts/live-check.mjs` (płatny, poza `check`): umowa
       testowa + tekst z wstrzykniętym poleceniem, oczekiwania w `private/`.
+      Po drodze: `messages.parse` zastąpione `messages.create` z tym samym `betaZodOutputFormat`
+      (recenzent: `parse` przy błędzie parsowania gubi odpowiedź — odmowa w trakcie pisania
+      wyglądała jak zła odpowiedź, a wynik modelu zapasowego przepadał); bez ponowienia po
+      przekroczeniu czasu (25 s na próbę) i przy błędach nieprzejściowych (zły klucz, limit
+      wydatków → 500 `misconfigured`); każdy nieprzewidziany wyjątek → JSON 500 z CORS; prompt
+      doprecyzowany (język dokumentu, rodzaje dokumentów, kropki, wprost o brakach, artefakty
+      PDF); adres IP tylko z `x-forwarded-for` (dokumentacja Vercel); `fileName` do 255 znaków.
+      Płatne przebiegi, effort `low`, 6 z 8 wywołań: umowa testowa 16,0 s i 16,3 s; faktura
+      z wstrzykniętym poleceniem 6,1 s i 6,0 s; umowa po angielsku 6,9 s; tekst 186 505 znaków
+      (umowa powtórzona 9 razy) 18,2 s. Wszystkie kontrole zielone, polecenia z treści
+      dokumentów niewykonane. Innych poziomów effort nie mierzyliśmy. Pierwszy test dymny po
+      deployu oblał (najpewniej stara wersja pod adresem tuż po deployu) — teraz ponawia.
 - [ ] **5. Interfejs** (F-05, F-06) — stan pusty, ładowanie, błąd z ponowieniem; podsumowanie,
       kluczowe punkty, podmioty, kwoty, daty, słowa kluczowe; podgląd i pobranie JSON; informacja,
       że tekst trafia do API AI; od 360 px, klawiatura, kontrast.

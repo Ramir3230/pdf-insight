@@ -61,3 +61,18 @@ Format: **co poszło nie tak** → **reguła lub kontrola** (gdzie mieszka).
 11. **Commit mimo czerwonego Prettiera** (blok 3): komendy połączone `;` zrobiły commit, choć
     `prettier --check` zgłosił błąd — potrzebny był drugi commit. → Commit tylko za
     `if ($?) { … }` albo po zielonym `npm run check`.
+12. **Założenie o SDK zamiast sprawdzenia** (blok 4, recenzent; powtórka punktu 9): agent
+    przyjął, że `messages.parse` przy odmowie zwraca `parsed_output: null`, a przy niezgodnym
+    JSON rzuca — więc odmowa w trakcie pisania i udany fallback kończyły się „złą odpowiedzią”.
+    Ten sam błąd w teście: fałszywa odpowiedź „limit wydatków” miała zgadnięty kształt i SDK jej
+    nie rozpoznało. → Zachowanie SDK czytać w `node_modules/@anthropic-ai/sdk` (kod, nie tylko
+    typy) i każdy kształt odpowiedzi w testach brać stamtąd; testy na prawdziwym SDK
+    z podstawionym `fetch` dla każdej gałęzi.
+13. **Zgubiony powód błędu kontroli** (blok 4): `npm run deploy:api 2>$null` — `report.mjs`
+    pisze `BŁĄD` na stderr, więc przyczyna oblanego testu dymnego zniknęła i dało się ją tylko
+    odgadnąć. → Kontroli z `scripts/` nie uruchamiać z `2>$null`; filtrować wyjście
+    `Select-String` bez odrzucania stderr.
+14. **Komentarz znów obiecywał pełną ochronę** (blok 4, recenzent; czwarta powtórka punktów 4, 6
+    i 10): „tekst nie wyjdzie z bloku `<dokument>`”, choć wzorzec łapał tylko dokładny znacznik.
+    → Komentarz i README mówią, co kod robi („utrudnia”), a nie jaki ma być efekt; przy
+    zabezpieczeniach wprost pisać, czego nie łapią.

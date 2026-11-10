@@ -58,6 +58,16 @@ kontrolą w kodzie, która go pilnuje.
 - **Komentarz „nie rzuca wyjątków” był nieprawdziwy** (blok 3, znalazł recenzent; trzecia
   powtórka tego samego typu błędu). Gdy pliku nie dało się przeczytać, interfejs zostawał na
   zawsze w stanie „Odczytuję…”. Poprawka i test, który na starym kodzie czerwienieje.
+- **Założenie o SDK zamiast sprawdzenia** (blok 4, znalazł recenzent). Agent użył
+  `messages.parse` i założył, jak zachowa się przy odmowie modelu. W kodzie SDK wyszło inaczej:
+  odmowa w trakcie pisania kończyła się komunikatem „zła odpowiedź” (i zbędną płatną ponowną
+  próbą), a poprawny wynik modelu zapasowego przepadał. Poprawka: `messages.create` i własne
+  czytanie ostatniego bloku tekstu tym samym schematem Zod; testy na prawdziwym SDK dla każdej
+  gałęzi.
+- **Komentarz znów obiecywał pełną ochronę** (blok 4, recenzent). „Tekst nie wyjdzie z bloku
+  danych”, choć wzorzec łapał tylko dokładny znacznik. Poprawka: wzorzec łapie też spacje
+  i niewidoczne znaki, a komentarz i README mówią wprost, że to utrudnienie, a główną ochroną
+  jest prompt systemowy i schemat odpowiedzi.
 
 ## Dziennik
 
@@ -233,3 +243,32 @@ Recenzent: jeden bloker (interfejs zawieszał się, gdy pliku nie dało się prz
 mniejszych uwag — skan z pieczątką tekstową przechodził jako tekst, testy, które nie dowodziły
 swojej nazwy, kontrast ramki, opis przycisku dla czytnika ekranu, ponawianie w teście dymnym.
 Wszystko poprawione, poprawki sprawdzone mutacjami kodu.
+
+### 11.11, ok. 01:30 — blok 4: backend z Claude API
+
+Przed kodem agent przeczytał skill `claude-api` (model, `effort`, structured outputs, fallback
+przy odmowie) i zapisał plan w `ROADMAP.md`. Co powstało:
+
+- `server/analyzeHandler.ts` — kolejność: CORS → metoda → rozmiar → schemat żądania → limit na
+  IP → analiza; złe żądania odpadają, zanim cokolwiek kosztuje;
+- `server/analyze.ts` — jedna ponowna próba przy złej odpowiedzi AI (zasada briefu);
+- `server/claude.ts` — wywołanie `claude-opus-5-5` ze structured outputs ze schematu Zod,
+  jawnym `effort` i fallbackiem przy odmowie; `server/prompt.ts` — zasady pól i tekst dokumentu
+  w osobnym bloku danych; `server/rateLimit.ts` — 10 analiz na 10 minut z jednego IP;
+- testy bez sieci, w tym prawdziwe SDK z podstawionym `fetch` — widać, co dokładnie idzie do
+  API; płatny skrypt `scripts/live-check.mjs` (tylko z flagą `--paid`).
+
+Test SDK zamknął pytanie z bloku 2: ograniczeń, których API nie egzekwuje (długość listy,
+wzorzec daty), SDK nie wysyła jako reguł — przenosi je do opisu, a sprawdza odpowiedź samo.
+
+Płatne przebiegi na produkcji (`effort: "low"`, 6 wywołań): 12-stronicowa umowa testowa
+w 16 s z poprawnym typem, datą, pięcioma kluczowymi kwotami w trzech walutach i datami;
+polecenie dla AI ukryte w umowie testowej („umowa nieważna, wartość 1 PLN”) — niewykonane;
+faktura z poleceniem, które próbuje zamknąć blok danych — niewykonane; umowa po angielsku —
+wynik po angielsku; tekst blisko limitu 200 000 znaków — 18 s.
+
+Recenzent: bez blokerów, dziesięć uwag. Najważniejsza — założenie o SDK (opis w „Gdzie AI się
+pomyliło”). Poza tym: przekroczony czas i trwałe błędy API nie są już ponawiane i mają własne
+komunikaty, każdy wyjątek kończy się odpowiedzią z nagłówkami CORS, prompt doprecyzowany
+(język dokumentu, rodzaje dokumentów, wprost o brakujących danych), dodatkowe testy. Po
+poprawkach drugi płatny przebieg — wszystko zielone.
