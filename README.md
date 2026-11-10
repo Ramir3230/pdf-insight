@@ -11,6 +11,13 @@ Demo: https://ramir3230.github.io/pdf-insight/
   - `src/components/` — komponenty interfejsu.
   - `src/lib/` — logika bez interfejsu; `src/lib/messages.ts` — wszystkie teksty interfejsu;
     `src/lib/schema.ts` — schemat wyniku (Zod), wspólny dla frontendu i backendu.
+  - Odczyt PDF w przeglądarce — plik nie trafia na serwer, dalej idzie tylko tekst:
+    `pdfFile.ts` sprawdza plik (jeden, niepusty, do 10 MB, nagłówek `%PDF-` w treści — nie
+    nazwa ani typ MIME), `pdfText.ts` wyciąga tekst i liczbę stron przez pdf.js (wersja 6 nie
+    ma już `eval` ani `new Function`, przez które w starszych wersjach spreparowany PDF mógł
+    wykonać kod), `readPdf.ts` łączy oba kroki i zamienia problemy na kody
+    błędów, `pdfWorker.ts` podpina worker pdf.js z `dist/assets`. Testy używają małych plików
+    PDF budowanych w kodzie (`src/lib/testing/makeTestPdf.ts`), bez binarnych fikstur.
 - `api/analyze.ts` — funkcja Vercel, jedyny punkt wejścia backendu. Tylko odczyt ustawień.
 - `server/` — logika backendu (CORS, obsługa żądania), testowana bez sieci. Poza `api/`, bo
   Vercel zamienia każdy plik w `api/` w osobną funkcję.
@@ -48,7 +55,8 @@ Zmienne środowiskowe — w `.env.example` (bez wartości).
 Vitest, build, a potem skrypty z `scripts/`:
 
 - `check-dist.mjs` — każdy lokalny adres w `dist/index.html` zaczyna się od `/pdf-insight/`
-  i wskazuje na istniejący plik; strona ma znacznik wersji `<meta name="build">`.
+  i wskazuje na istniejący plik; strona ma znacznik wersji `<meta name="build">`; worker pdf.js
+  jest w `dist/assets`, a skrypt aplikacji odwołuje się do niego pełnym adresem.
 - `check-secrets.mjs` — brak klucza API Anthropic w plikach na dysku, w indeksie git, w całej
   historii git (zmiany, także z commitów merge, wiadomości commitów, opisy tagów) i w `dist/`;
   pliki w UTF-16 też są sprawdzane. `src/` i `dist/` nie odwołują się do zmiennej z kluczem;
@@ -65,8 +73,9 @@ sprawdza całą historię po każdym pushu.
 
 CI (`.github/workflows/ci.yml`) na każdy push: `npm audit --audit-level=high`, `npm run check`;
 na `main` dodatkowo deploy na GitHub Pages i test dymny `scripts/smoke.mjs`: demo odpowiada 200
-i podaje wersję z właśnie zbudowanego commita, backend działa bez logowania, CORS przepuszcza
-domenę demo i odrzuca obcą.
+i podaje wersję z właśnie zbudowanego commita, worker pdf.js odpowiada 200 z typem JavaScript
+(sam status nie wystarcza: serwer może na brakujący plik oddać stronę HTML z kodem 200),
+backend działa bez logowania, CORS przepuszcza domenę demo i odrzuca obcą.
 
 ## Zależności
 
@@ -76,6 +85,7 @@ Każda zależność ma powód. Bez zależności „na zapas”.
 | ---------------------------------- | ---------------------------------------------------------------------------- |
 | `react`, `react-dom`               | Interfejs (wymóg: React 18+)                                                 |
 | `zod`                              | Schemat wyniku: walidacja na backendzie i froncie, structured outputs Claude |
+| `pdfjs-dist`                       | pdf.js (Mozilla): tekst i liczba stron z PDF w przeglądarce, bez serwera     |
 | `vite`                             | Serwer deweloperski i build frontendu                                        |
 | `@vitejs/plugin-react`             | Obsługa React i JSX w Vite                                                   |
 | `typescript`                       | TypeScript `strict`. Wersja 6.0: `typescript-eslint` nie obsługuje jeszcze 7 |
@@ -90,6 +100,13 @@ Każda zależność ma powód. Bez zależności „na zapas”.
 | `vitest`                           | Testy jednostkowe                                                            |
 
 ## Znane ograniczenia
+
+- Skany i PDF bez warstwy tekstowej nie są obsługiwane (brak OCR) — użytkownik dostaje
+  komunikat. PDF, w którym tylko część stron ma tekst, jest analizowany na podstawie tej części.
+- PDF chroniony hasłem — komunikat z prośbą o zapisanie pliku bez hasła.
+- Aplikacja nie dołącza map znaków (cMaps) ani standardowych czcionek pdf.js — są potrzebne do
+  rysowania stron i rzadkich kodowań (głównie chińskich, japońskich, koreańskich), a my tylko
+  wyciągamy tekst. Tekst w takich kodowaniach może się nie odczytać.
 
 - ESLint 9 nie jest już wspierany przez autorów, ale `eslint-plugin-react`
   i `eslint-plugin-jsx-a11y` działają tylko z nim. `npm audit` pokazuje 7 podatności
