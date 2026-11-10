@@ -33,6 +33,12 @@ Po każdym bloku dopisać wpis do „Dziennika”: prompt właściciela (orygina
 i tłumaczenie na polski), co zrobił agent, co poszło nie tak i jak to poprawiono. Tylko to, co
 naprawdę się wydarzyło. Pod koniec wybrać 3–5 kluczowych promptów.
 
+## Grabie
+
+`.claude/gotchas.md` — błędy agenta w tym projekcie i reguły lub kontrole, które ich pilnują.
+Przeczytać przed pracą. Nowy błąd agenta → nowy wpis tam i w `AI_LOG.md`; jeśli da się go
+złapać kodem, kontrola trafia do `npm run check`, a nie tylko do tekstu.
+
 ## Obowiązkowe minimum
 
 `npm run check` na zielono: tsc, eslint, prettier, testy, build. Ta sama komenda działa w CI
