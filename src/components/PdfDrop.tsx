@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useEffect, useId, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { messages } from "../lib/messages";
 
 type PdfDropProps = {
@@ -11,16 +11,27 @@ type PdfDropProps = {
 // Przycisk to prawdziwy <button> — działa z klawiatury i na telefonie, gdzie przeciągania nie ma.
 export function PdfDrop({ onFiles, buttonLabel }: PdfDropProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const limitsId = useId();
   const [isDragging, setIsDragging] = useState(false);
 
-  // Plik upuszczony obok strefy przeglądarka otworzyłaby w miejscu aplikacji — blokujemy to.
+  // Plik upuszczony obok strefy przeglądarka otworzyłaby w miejscu aplikacji — blokujemy to
+  // i pokazujemy kursor „nie można upuścić”. Strefa obsługuje zdarzenie wcześniej (React słucha
+  // na #root, a window jest ostatnie), więc jej upuszczenia mają już defaultPrevented.
   useEffect(() => {
-    const preventOpening = (event: globalThis.DragEvent) => event.preventDefault();
-    window.addEventListener("dragover", preventOpening);
-    window.addEventListener("drop", preventOpening);
+    const blockOutsideZone = (event: globalThis.DragEvent) => {
+      if (event.defaultPrevented) {
+        return;
+      }
+      event.preventDefault();
+      if (event.dataTransfer) {
+        event.dataTransfer.dropEffect = "none";
+      }
+    };
+    window.addEventListener("dragover", blockOutsideZone);
+    window.addEventListener("drop", blockOutsideZone);
     return () => {
-      window.removeEventListener("dragover", preventOpening);
-      window.removeEventListener("drop", preventOpening);
+      window.removeEventListener("dragover", blockOutsideZone);
+      window.removeEventListener("drop", blockOutsideZone);
     };
   }, []);
 
@@ -53,7 +64,14 @@ export function PdfDrop({ onFiles, buttonLabel }: PdfDropProps) {
     >
       <p className="dropzone__hint">{messages.upload.dropHint}</p>
       <p className="dropzone__hint">{messages.upload.or}</p>
-      <button type="button" className="button" onClick={() => inputRef.current?.click()}>
+      {/* aria-describedby: czytnik ekranu poda przy przycisku ograniczenia (PDF, 10 MB) —
+          także na telefonie, gdzie podpowiedź o przeciąganiu jest ukryta. */}
+      <button
+        type="button"
+        className="button"
+        aria-describedby={limitsId}
+        onClick={() => inputRef.current?.click()}
+      >
         {buttonLabel}
       </button>
       <input
@@ -63,7 +81,9 @@ export function PdfDrop({ onFiles, buttonLabel }: PdfDropProps) {
         hidden
         onChange={handleChange}
       />
-      <p className="dropzone__limits">{messages.upload.limits}</p>
+      <p id={limitsId} className="dropzone__limits">
+        {messages.upload.limits}
+      </p>
     </div>
   );
 }
