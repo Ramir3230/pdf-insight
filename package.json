@@ -19,7 +19,8 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:readme": "node scripts/check-readme-deps.mjs",
     "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && npm run check:dist && npm run check:secrets && npm run check:readme",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "deploy:api": "node scripts/deploy-api.mjs"
   },
   "dependencies": {
     "react": "^19.3.1",
