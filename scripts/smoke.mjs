@@ -39,23 +39,20 @@ function request(url, init = {}) {
 /**
  * Powtarza zapytanie, dopóki `isReady` nie zwróci true. GitHub Pages potrzebuje chwili, zanim
  * nowa wersja trafi na CDN, a pojedynczy błąd sieci nie powinien oblewać testu.
- * Zwraca ostatnią odpowiedź (z treścią i typem) albo opis ostatniego błędu.
+ * Zwraca ostatnią odpowiedź (z treścią i nagłówkami) albo opis ostatniego błędu.
  * @param {string} url
- * @param {(status: number, body: string, type: string) => boolean} isReady
- * @returns {Promise<{ status: number, body: string, type: string } | { error: string }>}
+ * @param {(status: number, body: string, headers: Headers) => boolean} isReady
+ * @param {RequestInit} [init]
+ * @returns {Promise<{ status: number, body: string, headers: Headers } | { error: string }>}
  */
-async function fetchUntil(url, isReady) {
-  /** @type {{ status: number, body: string, type: string } | { error: string }} */
+async function fetchUntil(url, isReady, init) {
+  /** @type {{ status: number, body: string, headers: Headers } | { error: string }} */
   let last = { error: "brak odpowiedzi" };
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
-      const response = await request(url);
-      last = {
-        status: response.status,
-        body: await response.text(),
-        type: response.headers.get("Content-Type") ?? "",
-      };
-      if (isReady(last.status, last.body, last.type)) {
+      const response = await request(url, init);
+      last = { status: response.status, body: await response.text(), headers: response.headers };
+      if (isReady(last.status, last.body, last.headers)) {
         return last;
       }
     } catch (error) {
@@ -119,18 +116,21 @@ async function checkPdfWorker(script, scriptUrl) {
     return;
   }
   const workerUrl = new URL(path, scriptUrl).href;
+  /** @param {Headers} headers */
+  const typeOf = (headers) => headers.get("Content-Type") ?? "";
   const worker = await fetchUntil(
     workerUrl,
-    (status, _body, type) => status === 200 && /javascript/.test(type),
+    (status, _body, headers) => status === 200 && /javascript/.test(typeOf(headers)),
   );
   if ("error" in worker) {
     fail(`demo: worker ${workerUrl}: ${worker.error}`);
-  } else if (worker.status !== 200 || !/javascript/.test(worker.type)) {
-    fail(
-      `demo: worker ${workerUrl}: status ${worker.status}, Content-Type ${worker.type || "brak"}`,
-    );
+    return;
+  }
+  const type = typeOf(worker.headers);
+  if (worker.status !== 200 || !/javascript/.test(type)) {
+    fail(`demo: worker ${workerUrl}: status ${worker.status}, Content-Type ${type || "brak"}`);
   } else {
-    pass(`demo: worker pdf.js się ładuje (${worker.type})`);
+    pass(`demo: worker pdf.js się ładuje (${type})`);
   }
 }
 
@@ -149,20 +149,31 @@ function preflight(origin) {
 async function checkApiLogin() {
   // Logowanie sprawdzamy POST-em: na preflight (OPTIONS) Vercel Deployment Protection odpowiada
   // 204 nawet na chronionym adresie. Puste body backend odrzuca przed wywołaniem Claude API.
-  const post = await request(API_URL, {
-    method: "POST",
-    headers: { Origin: ALLOWED_ORIGIN, "Content-Type": "application/json" },
-    body: "{}",
-  });
+  // Powtórki: tuż po `npm run deploy:api` adres produkcyjny może jeszcze chwilę wskazywać
+  // poprzednią wersję. Na 401 czekanie nic nie da, więc ono też kończy powtórki.
+  /** @param {number} status @param {string} body */
+  const expected = (status, body) => status === 400 && body.includes('"invalid_request"');
+  const post = await fetchUntil(
+    API_URL,
+    (status, body) => status === 401 || expected(status, body),
+    {
+      method: "POST",
+      headers: { Origin: ALLOWED_ORIGIN, "Content-Type": "application/json" },
+      body: "{}",
+    },
+  );
+  if ("error" in post) {
+    fail(`API ${API_URL}: ${post.error}`);
+    return false;
+  }
   if (post.status === 401) {
     fail(`API ${API_URL}: 401, wymaga logowania — to nie jest adres produkcyjny Vercel`);
     return false;
   }
   const allowOrigin = post.headers.get("Access-Control-Allow-Origin");
-  const body = await post.text();
   // Puste body backend odrzuca kodem 400 invalid_request, zanim cokolwiek wyśle do Claude.
   // Inny kod oznacza, że backend robi coś innego niż oczekujemy — np. przepuścił puste body.
-  if (post.status !== 400 || !body.includes('"invalid_request"')) {
+  if (!expected(post.status, post.body)) {
     fail(`API: POST {} zwraca ${post.status}, oczekiwano 400 invalid_request`);
   } else if (allowOrigin !== ALLOWED_ORIGIN) {
     fail(`API: POST z ${ALLOWED_ORIGIN} bez nagłówka Allow-Origin (jest: ${allowOrigin})`);
