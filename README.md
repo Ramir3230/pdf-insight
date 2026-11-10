@@ -8,7 +8,13 @@ Demo: https://ramir3230.github.io/pdf-insight/
 ## Architektura
 
 - `src/` — frontend (React + Vite, TypeScript `strict`), hosting na GitHub Pages.
-  - `src/components/` — komponenty interfejsu.
+  - `src/components/` — komponenty interfejsu: `App.tsx` (kroki: plik → odczyt tekstu →
+    analiza → wynik albo błąd z ponowieniem), `PdfDrop.tsx` (wgrywanie), `ResultView.tsx`
+    (wynik: podsumowanie, punkty, kwoty, daty, podmioty, słowa kluczowe), `JsonExport.tsx`
+    (podgląd i pobranie JSON — plik powstaje w przeglądarce).
+  - `src/api/analyzeClient.ts` — klient HTTP backendu: odpowiedź sprawdzana tym samym schematem
+    Zod co na backendzie, zanim trafi na ekran; każdy problem to kod błędu z komunikatem.
+  - `src/lib/format.ts` — kwoty, daty i nazwy języków po polsku (`Intl`), nazwa pliku JSON.
   - `src/lib/` — logika bez interfejsu; `src/lib/messages.ts` — wszystkie teksty interfejsu;
     `src/lib/schema.ts` — schemat wyniku (Zod), wspólny dla frontendu i backendu.
   - Odczyt PDF w przeglądarce — plik nie trafia na serwer, dalej idzie tylko tekst:
@@ -24,14 +30,20 @@ Demo: https://ramir3230.github.io/pdf-insight/
   - `analyzeHandler.ts` — żądanie po kolei: CORS (tylko domena demo) → metoda → rozmiar body
     (413) → JSON i schemat `analyzeRequestSchema` (400, za długi tekst 413) → limit żądań na IP
     (429) → analiza. Złe żądania odpadają, zanim cokolwiek trafi do Claude (i zanim kosztuje).
-  - `analyze.ts` — zasada briefu: zła odpowiedź AI (albo przejściowy błąd API) → dokładnie jedna
-    ponowna próba, potem błąd; odmowy modelu nie ponawiamy.
+  - `analyze.ts` — zasada briefu: zła odpowiedź AI (albo przejściowy błąd API: sieć, 429, 5xx)
+    → dokładnie jedna ponowna próba, potem błąd. Bez ponowienia: odmowa modelu, przekroczony
+    czas (25 s na próbę), błędy nieprzejściowe (zły klucz, wyczerpany limit wydatków).
   - `claude.ts` — jedno wywołanie Claude (`claude-opus-5-5`): structured outputs ze schematu Zod
-    (`betaZodOutputFormat(modelOutputSchema)` — SDK sprawdza odpowiedź tym samym schematem),
-    jawny `effort`, serwerowy fallback przy odmowie modelu, limit czasu jednej próby.
-  - `prompt.ts` — prompt systemowy (zasady pól, „nie zgadujesz”) i tekst dokumentu w osobnym
-    bloku `<dokument>` jako dane; znaczniki bloku w treści są neutralizowane, więc tekst nie
-    „wyjdzie” z bloku. Nazwa pliku nie trafia do modelu.
+    (`betaZodOutputFormat(modelOutputSchema)` daje JSON Schema dla API i parser, który sprawdza
+    odpowiedź tym samym schematem), jawny `effort`, serwerowy fallback przy odmowie modelu.
+    Odpowiedź czytamy sami (`messages.create`), a nie przez `messages.parse`: ta przy błędzie
+    parsowania gubi odpowiedź, więc nie odróżnia odmowy w trakcie pisania ani nie odczyta
+    wyniku modelu zapasowego.
+  - `prompt.ts` — prompt systemowy (zasady pól, „nie zgadujesz”, język dokumentu, rodzaje
+    dokumentów) i tekst dokumentu w osobnym bloku `<dokument>` jako dane. Znaczniki bloku
+    w treści (także ze spacjami) są neutralizowane, a niewidoczne znaki formatujące usuwane —
+    to utrudnienie, nie pełna ochrona; główną ochroną są prompt systemowy i odpowiedź
+    ograniczona schematem. Nazwa pliku nie trafia do modelu.
   - `rateLimit.ts` — limit analiz na adres IP (10 na 10 minut).
 - `scripts/` — kontrole uruchamiane w `npm run check` i w CI (opis niżej).
 
@@ -58,6 +70,10 @@ git config core.hooksPath .githooks   # hook pre-commit: blokuje commit z klucze
 npm run dev      # serwer deweloperski Vite
 npm run check    # kontrole z CI (CI dodatkowo uruchamia npm audit)
 ```
+
+Analiza lokalnie: produkcyjny backend przyjmuje żądania tylko z domeny demo (CORS), więc
+z `localhost` odpowie błędem. Do pracy nad interfejsem wystarczy dowolny serwer zgodny
+z `analysisResultSchema` pod adresem z `VITE_API_URL` (np. `$env:VITE_API_URL = "…"; npm run dev`).
 
 Zmienne środowiskowe — w `.env.example` (bez wartości):
 
