@@ -1,10 +1,35 @@
+import { MAX_TEXT_CHARS, analyzeRequestSchema, type AnalyzeRequest } from "../src/lib/schema.js";
+import type { AnalyzeOutcome } from "./analyze.js";
 import { corsHeaders, isAllowedOrigin } from "./cors.js";
+import { clientIp, type RateLimiter } from "./rateLimit.js";
 
 export interface AnalyzeConfig {
   allowedOrigin: string;
+  // null, gdy na serwerze brak klucza API — odpowiadamy 500 zamiast próbować wywołać Claude.
+  analyze: ((request: AnalyzeRequest) => Promise<AnalyzeOutcome>) | null;
+  rateLimit: RateLimiter;
 }
 
-export type ErrorCode = "forbidden_origin" | "method_not_allowed" | "not_implemented";
+export type ErrorCode =
+  | "forbidden_origin"
+  | "method_not_allowed"
+  | "payload_too_large"
+  | "invalid_request"
+  | "text_too_long"
+  | "rate_limited"
+  | "refused"
+  | "invalid_response"
+  | "unavailable"
+  | "not_configured";
+
+// Największe body żądania: 1 000 000 bajtów według Content-Length i tyle samo znaków po
+// odczycie. Tekst do MAX_TEXT_CHARS znaków zajmuje w JSON zwykle niewiele więcej (escapowane
+// są cudzysłowy i nowe linie), więc to duży zapas. Większe body odrzucamy bez parsowania JSON.
+export const MAX_BODY_SIZE = 1_000_000;
+
+// Ile analiz na jeden adres IP w oknie czasu (patrz rateLimit.ts).
+export const RATE_LIMIT = 10;
+export const RATE_WINDOW_MS = 10 * 60 * 1000;
 
 function errorResponse(
   status: number,
@@ -15,7 +40,25 @@ function errorResponse(
   return Response.json({ error: { code, message } }, { status, headers });
 }
 
-export function handleAnalyze(request: Request, config: AnalyzeConfig): Response {
+// Odczyt body z limitem: najpierw nagłówek Content-Length (bez czytania), potem faktyczna długość.
+async function readBody(request: Request): Promise<string | null> {
+  const declared = Number(request.headers.get("Content-Length") ?? "0");
+  if (declared > MAX_BODY_SIZE) {
+    return null;
+  }
+  const body = await request.text();
+  return body.length > MAX_BODY_SIZE ? null : body;
+}
+
+function parseJson(body: string): unknown {
+  try {
+    return JSON.parse(body);
+  } catch {
+    return undefined;
+  }
+}
+
+export async function handleAnalyze(request: Request, config: AnalyzeConfig): Promise<Response> {
   const origin = request.headers.get("Origin");
   if (!isAllowedOrigin(origin, config.allowedOrigin)) {
     // Bez nagłówków CORS: przeglądarka na obcej stronie nie odczyta tej odpowiedzi.
@@ -38,6 +81,77 @@ export function handleAnalyze(request: Request, config: AnalyzeConfig): Response
     });
   }
 
-  // Zaślepka bloku 1: analizę przez Claude API dodaje blok 4.
-  return errorResponse(501, "not_implemented", "Analiza nie jest jeszcze dostępna.", cors);
+  // Wszystko poniżej do wywołania Claude jest darmowe: złe żądanie nie kosztuje nic.
+  const body = await readBody(request);
+  if (body === null) {
+    return errorResponse(413, "payload_too_large", "Żądanie jest za duże.", cors);
+  }
+
+  const parsed = analyzeRequestSchema.safeParse(parseJson(body));
+  if (!parsed.success) {
+    const textTooLong = parsed.error.issues.some(
+      (issue) => issue.path[0] === "text" && issue.code === "too_big",
+    );
+    if (textTooLong) {
+      const limit = MAX_TEXT_CHARS.toLocaleString("pl-PL");
+      return errorResponse(
+        413,
+        "text_too_long",
+        `Dokument jest za długi: najwyżej ${limit} znaków tekstu.`,
+        cors,
+      );
+    }
+    return errorResponse(
+      400,
+      "invalid_request",
+      "Nieprawidłowe żądanie: wymagany tekst dokumentu, nazwa pliku i liczba stron.",
+      cors,
+    );
+  }
+
+  if (config.analyze === null) {
+    console.error("analyze: brak ANTHROPIC_API_KEY w zmiennych środowiskowych");
+    return errorResponse(500, "not_configured", "Serwer nie jest skonfigurowany.", cors);
+  }
+
+  // Limit liczymy tylko dla żądań, które naprawdę idą do Claude (i kosztują).
+  const decision = config.rateLimit(clientIp(request));
+  if (!decision.allowed) {
+    return errorResponse(
+      429,
+      "rate_limited",
+      "Za dużo analiz w krótkim czasie. Spróbuj ponownie za kilka minut.",
+      { ...cors, "Retry-After": String(decision.retryAfterSeconds) },
+    );
+  }
+
+  const outcome = await config.analyze(parsed.data);
+  if (outcome.ok) {
+    return Response.json(outcome.result, { headers: cors });
+  }
+  // Do logów Vercel trafia tylko kod błędu i status API, bez treści dokumentu.
+  console.error(`analyze: ${outcome.code}`, outcome.status ?? "");
+  switch (outcome.code) {
+    case "refused":
+      return errorResponse(
+        422,
+        "refused",
+        "Model AI odmówił analizy tego dokumentu. Spróbuj z innym plikiem.",
+        cors,
+      );
+    case "invalid_response":
+      return errorResponse(
+        502,
+        "invalid_response",
+        "AI zwróciło niepoprawny wynik, także przy ponownej próbie. Spróbuj ponownie.",
+        cors,
+      );
+    case "unavailable":
+      return errorResponse(
+        503,
+        "unavailable",
+        "Usługa AI jest chwilowo niedostępna. Spróbuj ponownie za chwilę.",
+        cors,
+      );
+  }
 }
