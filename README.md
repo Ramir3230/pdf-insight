@@ -62,9 +62,13 @@ Vitest, build, a potem skrypty z `scripts/`:
   pliki w UTF-16 też są sprawdzane. `src/` i `dist/` nie odwołują się do zmiennej z kluczem;
   `.env.example` bez wartości klucza. Znalezionej wartości nie drukuje.
 - `check-readme-deps.mjs` — każda zależność z `package.json` jest opisana niżej.
+- `check-invisible.mjs` — żaden plik tekstowy repozytorium (także jeszcze niedodany do gita)
+  nie zawiera niewidocznych znaków: twardej spacji, spacji typograficznych, znaków o zerowej
+  szerokości, BOM.
 
-ESLint traktuje jako błąd `console` (wyjątek: `console.error` w backendzie), `any`
-i `dangerouslySetInnerHTML`; komentarze `eslint-disable` są wyłączone.
+ESLint traktuje jako błąd `console` (wyjątek: `console.error` w backendzie), `any`,
+`dangerouslySetInnerHTML` i niewidoczne spacje (także w napisach i komentarzach — mają być
+zapisane kodem, np. `\u00a0`); komentarze `eslint-disable` są wyłączone.
 
 Klucz w historii git to dyskwalifikacja, której nie da się cofnąć bez przepisywania historii,
 dlatego są trzy warstwy: hook `.githooks/pre-commit` (`check-secrets.mjs --staged`) zatrzymuje
@@ -102,7 +106,10 @@ Każda zależność ma powód. Bez zależności „na zapas”.
 ## Znane ograniczenia
 
 - Skany i PDF bez warstwy tekstowej nie są obsługiwane (brak OCR) — użytkownik dostaje
-  komunikat. PDF, w którym tylko część stron ma tekst, jest analizowany na podstawie tej części.
+  komunikat. Za skan uznajemy też PDF ze średnio mniej niż 50 literami na stronę (np. skan
+  z tekstową pieczątką podpisu), więc bardzo krótki dokument tekstowy też zostanie odrzucony.
+  PDF, w którym tylko część stron ma tekst, przechodzi, jeśli średnia się zgadza, i jest
+  analizowany na podstawie tej części.
 - PDF chroniony hasłem — komunikat z prośbą o zapisanie pliku bez hasła.
 - Aplikacja nie dołącza map znaków (cMaps) ani standardowych czcionek pdf.js — są potrzebne do
   rysowania stron i rzadkich kodowań (głównie chińskich, japońskich, koreańskich), a my tylko

@@ -17,9 +17,10 @@ export default defineConfig({
   plugins: [react(), buildIdPlugin],
   build: {
     // Bundle to ok. 670 kB (ok. 205 kB gzip), z czego ok. 450 kB to pdf.js. Domyślny próg
-    // ostrzeżenia to 500 kB. Leniwe ładowanie pdf.js tylko przesunęłoby to samo pobieranie
-    // o kilka sekund — pierwszą rzeczą na stronie jest wybór PDF — a wymagałoby przekazywania
-    // loadera pdf.js przez kilka modułów. Próg z zapasem na interfejs wyników.
+    // ostrzeżenia to 500 kB. Leniwe ładowanie pdf.js pozwoliłoby narysować stronę chwilę
+    // wcześniej i ukryć pobieranie za czasem wyboru pliku, ale zysk jest mały, a koszt to
+    // dodatkowy stan „ładuję pdf.js”, obsługa błędu pobrania i przekazywanie loadera przez
+    // moduły (testy w Node działają bez workera). Wybrana prostota; próg z zapasem na wyniki.
     chunkSizeWarningLimit: 800,
   },
   test: {
