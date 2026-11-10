@@ -1,5 +1,5 @@
 import { MAX_TEXT_CHARS, analyzeRequestSchema, type AnalyzeRequest } from "../src/lib/schema.js";
-import type { AnalyzeOutcome } from "./analyze.js";
+import type { AnalyzeErrorCode, AnalyzeOutcome } from "./analyze.js";
 import { corsHeaders, isAllowedOrigin } from "./cors.js";
 import { clientIp, type RateLimiter } from "./rateLimit.js";
 
@@ -17,10 +17,27 @@ export type ErrorCode =
   | "invalid_request"
   | "text_too_long"
   | "rate_limited"
-  | "refused"
-  | "invalid_response"
-  | "unavailable"
-  | "not_configured";
+  | "not_configured"
+  | "internal_error"
+  | AnalyzeErrorCode;
+
+// Status HTTP i komunikat dla każdego błędu analizy.
+const ANALYZE_ERRORS: Record<AnalyzeErrorCode, [number, string]> = {
+  refused: [422, "Model AI odmówił analizy tego dokumentu. Spróbuj z innym plikiem."],
+  invalid_response: [
+    502,
+    "AI zwróciło niepoprawny wynik, także przy ponownej próbie. Spróbuj ponownie.",
+  ],
+  timeout: [
+    504,
+    "Analiza trwała zbyt długo — dokument może być za długi. Spróbuj z krótszym dokumentem.",
+  ],
+  unavailable: [503, "Usługa AI jest chwilowo niedostępna. Spróbuj ponownie za chwilę."],
+  misconfigured: [
+    500,
+    "Usługa AI odrzuciła żądanie serwera (np. klucz albo limit wydatków). Spróbuj później.",
+  ],
+};
 
 // Największe body żądania: 1 000 000 bajtów według Content-Length i tyle samo znaków po
 // odczycie. Tekst do MAX_TEXT_CHARS znaków zajmuje w JSON zwykle niewiele więcej (escapowane
@@ -58,7 +75,26 @@ function parseJson(body: string): unknown {
   }
 }
 
+// Punkt wejścia: każdy nieprzewidziany wyjątek też kończy się odpowiedzią JSON z nagłówkami
+// CORS — inaczej Vercel oddałby goły błąd 500, a przeglądarka zgłosiłaby tylko błąd CORS.
 export async function handleAnalyze(request: Request, config: AnalyzeConfig): Promise<Response> {
+  try {
+    return await handle(request, config);
+  } catch (error) {
+    console.error(
+      "analyze: nieoczekiwany błąd",
+      error instanceof Error ? error.name : typeof error,
+    );
+    return errorResponse(
+      500,
+      "internal_error",
+      "Wewnętrzny błąd serwera. Spróbuj ponownie.",
+      corsHeaders(config.allowedOrigin),
+    );
+  }
+}
+
+async function handle(request: Request, config: AnalyzeConfig): Promise<Response> {
   const origin = request.headers.get("Origin");
   if (!isAllowedOrigin(origin, config.allowedOrigin)) {
     // Bez nagłówków CORS: przeglądarka na obcej stronie nie odczyta tej odpowiedzi.
@@ -131,27 +167,6 @@ export async function handleAnalyze(request: Request, config: AnalyzeConfig): Pr
   }
   // Do logów Vercel trafia tylko kod błędu i status API, bez treści dokumentu.
   console.error(`analyze: ${outcome.code}`, outcome.status ?? "");
-  switch (outcome.code) {
-    case "refused":
-      return errorResponse(
-        422,
-        "refused",
-        "Model AI odmówił analizy tego dokumentu. Spróbuj z innym plikiem.",
-        cors,
-      );
-    case "invalid_response":
-      return errorResponse(
-        502,
-        "invalid_response",
-        "AI zwróciło niepoprawny wynik, także przy ponownej próbie. Spróbuj ponownie.",
-        cors,
-      );
-    case "unavailable":
-      return errorResponse(
-        503,
-        "unavailable",
-        "Usługa AI jest chwilowo niedostępna. Spróbuj ponownie za chwilę.",
-        cors,
-      );
-  }
+  const [status, message] = ANALYZE_ERRORS[outcome.code];
+  return errorResponse(status, outcome.code, message, cors);
 }

@@ -176,7 +176,9 @@ describe("handleAnalyze: analiza", () => {
   it.each([
     ["refused", 422],
     ["invalid_response", 502],
+    ["timeout", 504],
     ["unavailable", 503],
+    ["misconfigured", 500],
   ] as const)("błąd analizy %s → %i z tym samym kodem", async (code, status) => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { config } = setup({ ok: false, code });
@@ -184,6 +186,49 @@ describe("handleAnalyze: analiza", () => {
     expect(response.status).toBe(status);
     expect(await errorCode(response)).toBe(code);
     expect(response.headers.get("Access-Control-Allow-Origin")).toBe(allowedOrigin);
+  });
+});
+
+describe("handleAnalyze: odpowiedzi błędów", () => {
+  it("nieprzewidziany wyjątek → 500 internal_error z nagłówkami CORS", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const config: AnalyzeConfig = {
+      ...setup().config,
+      analyze: async () => {
+        throw new Error("niespodziewany");
+      },
+    };
+    const response = await handleAnalyze(post(validBody), config);
+    expect(response.status).toBe(500);
+    expect(await errorCode(response)).toBe("internal_error");
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBe(allowedOrigin);
+  });
+
+  it("odrzuca za duże body już po nagłówku Content-Length, bez czytania treści", async () => {
+    const { analyze, config } = setup();
+    const headers = new Headers({
+      Origin: allowedOrigin,
+      "Content-Length": String(MAX_BODY_SIZE + 1),
+    });
+    const small = new Request(url, { method: "POST", headers, body: JSON.stringify(validBody) });
+    const response = await handleAnalyze(small, config);
+    expect(response.status).toBe(413);
+    expect(analyze).not.toHaveBeenCalled();
+  });
+
+  it("każda odpowiedź błędu dla domeny demo ma nagłówki CORS (przeglądarka odczyta komunikat)", async () => {
+    const { config } = setup({ ok: true, result }, 1);
+    const responses = [
+      await handleAnalyze(request("GET"), config),
+      await handleAnalyze(post({}), config),
+      await handleAnalyze(post("x".repeat(MAX_BODY_SIZE + 1)), config),
+      await handleAnalyze(post(validBody, { ip: "9.9.9.9" }), config),
+      await handleAnalyze(post(validBody, { ip: "9.9.9.9" }), config),
+    ];
+    expect(responses.map((response) => response.status)).toEqual([405, 400, 413, 200, 429]);
+    for (const response of responses) {
+      expect(response.headers.get("Access-Control-Allow-Origin")).toBe(allowedOrigin);
+    }
   });
 });
 

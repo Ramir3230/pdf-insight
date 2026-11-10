@@ -18,6 +18,7 @@ const request = { fileName: "umowa.pdf", pages: 4, text: "Umowa serwisowa nr 14.
 const ok: ModelReply = { kind: "ok", output };
 const invalid: ModelReply = { kind: "invalid" };
 const refused: ModelReply = { kind: "refused" };
+const timeout: ModelReply = { kind: "timeout" };
 const overloaded: ModelReply = { kind: "unavailable", retryable: true, status: 529 };
 const badKey: ModelReply = { kind: "unavailable", retryable: false, status: 401 };
 
@@ -30,10 +31,13 @@ function model(...replies: ModelReply[]) {
   return ask;
 }
 
+// Bez przerwy przed ponowieniem, żeby testy nie czekały.
+const analyze = (ask: ReturnType<typeof model>) => analyzeDocument(request, ask, 0);
+
 describe("analyzeDocument", () => {
   it("składa wynik: dane pliku z żądania, podsumowanie w jeden tekst", async () => {
     const ask = model(ok);
-    const outcome = await analyzeDocument(request, ask);
+    const outcome = await analyze(ask);
     expect(outcome).toMatchObject({
       ok: true,
       result: {
@@ -47,35 +51,42 @@ describe("analyzeDocument", () => {
 
   it("zła odpowiedź AI → jedna ponowna próba, która się udaje", async () => {
     const ask = model(invalid, ok);
-    expect((await analyzeDocument(request, ask)).ok).toBe(true);
+    expect((await analyze(ask)).ok).toBe(true);
     expect(ask).toHaveBeenCalledTimes(2);
   });
 
   it("dwie złe odpowiedzi → błąd invalid_response po dokładnie dwóch próbach", async () => {
     const ask = model(invalid, invalid, ok);
-    expect(await analyzeDocument(request, ask)).toEqual({ ok: false, code: "invalid_response" });
+    expect(await analyze(ask)).toEqual({ ok: false, code: "invalid_response" });
     expect(ask).toHaveBeenCalledTimes(2);
   });
 
   it("przejściowy błąd API (np. 529) → jedna ponowna próba", async () => {
     const ask = model(overloaded, ok);
-    expect((await analyzeDocument(request, ask)).ok).toBe(true);
+    expect((await analyze(ask)).ok).toBe(true);
     expect(ask).toHaveBeenCalledTimes(2);
   });
 
-  it("trwały błąd API (np. 401) → bez ponownej próby", async () => {
+  it("dwa przejściowe błędy → unavailable", async () => {
+    const ask = model(overloaded, overloaded);
+    expect(await analyze(ask)).toEqual({ ok: false, code: "unavailable", status: 529 });
+  });
+
+  it("błąd nieprzejściowy (np. 401) → misconfigured bez ponownej próby", async () => {
     const ask = model(badKey, ok);
-    expect(await analyzeDocument(request, ask)).toEqual({
-      ok: false,
-      code: "unavailable",
-      status: 401,
-    });
+    expect(await analyze(ask)).toEqual({ ok: false, code: "misconfigured", status: 401 });
+    expect(ask).toHaveBeenCalledTimes(1);
+  });
+
+  it("przekroczony czas → timeout bez ponownej próby", async () => {
+    const ask = model(timeout, ok);
+    expect(await analyze(ask)).toEqual({ ok: false, code: "timeout" });
     expect(ask).toHaveBeenCalledTimes(1);
   });
 
   it("odmowa modelu → bez ponownej próby", async () => {
     const ask = model(refused, ok);
-    expect(await analyzeDocument(request, ask)).toEqual({ ok: false, code: "refused" });
+    expect(await analyze(ask)).toEqual({ ok: false, code: "refused" });
     expect(ask).toHaveBeenCalledTimes(1);
   });
 });
