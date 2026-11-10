@@ -93,7 +93,7 @@ tymczasowym sesji: bez zmian w systemie, bez instalacji globalnych.
       które musiały oblać: `check-dist` bez workera i bez odwołania; `smoke` na obecnych Pages
       i na kopii bez pliku workera (serwer oddał HTML z kodem 200 — stąd sprawdzanie typu);
       mutacje kodu — każdy test czerwienieje na swoim błędzie.
-- [x] **4. Backend** (F-03, F-04; 11.11, ok. 02:45) — `api/analyze.ts` na Vercel: POST z tekstem, nazwą pliku
+- [x] **4. Backend** (F-03, F-04; 11.11, ok. 01:55) — `api/analyze.ts` na Vercel: POST z tekstem, nazwą pliku
       i liczbą stron; CORS tylko dla `https://ramir3230.github.io`; limit rozmiaru tekstu i limit
       żądań na IP; Claude ze structured output; treść PDF oddzielona od instrukcji; jedna ponowna
       próba; błędy po polsku.
