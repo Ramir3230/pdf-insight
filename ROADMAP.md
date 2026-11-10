@@ -5,6 +5,35 @@ Kolejność: najpierw to, co może zawieść w ostatniej chwili (deploy na Pages
 potem funkcje, na końcu szlif i dokumenty. Zamknięty blok — odhaczyć tutaj i dopisać, co wyszło
 po drodze.
 
+## Noc 11.11 — praca autonomiczna (decyzja właściciela, 00:51)
+
+Bloki 3–5 agent robi bez zatrzymań na pytania; recenzent po każdym bloku zostaje. Wyjaśnienia
+po rosyjsku i decyzje z rozwidleń — w `private/noc-raporty.md` (poza gitem), zapisywane od razu.
+Po każdym skompresowaniu kontekstu: przeczytać tę sekcję, `.claude/gotchas.md`, `git log`,
+`git status` i raport, potem następny niezamknięty krok.
+
+**Cel na 06:00:** gałąź `feat/analyze` gotowa do merge'a.
+
+1. Backend na produkcji: `live-check` na umowie testowej — poprawny typ, strony, kwoty, daty,
+   czas poniżej 30 s; polecenie wstrzyknięte w PDF nie zostało wykonane.
+2. Frontend lokalnie sprawdzony w Chrome na 360 px i desktopie: stan pusty, ładowanie, błąd
+   z ponowieniem, wynik, podgląd i pobranie JSON.
+3. `npm run check` zielony, gałąź wypchnięta, CI na gałęzi zielone.
+4. Raport po rosyjsku dla każdego bloku.
+
+**Priorytety przy konflikcie:** 1) bezpieczeństwo — klucz nigdy w kodzie, wyjściu komend ani
+historii; 2) działające MUST przed szlifem, SHOULD (bloki 7, 8) nie w nocy; 3) kontroli nie
+skracamy — skracamy szlif; 4) prosty kod przed krótkim.
+
+**Punkty kontrolne:** blok 3 ok. 02:00, blok 4 ok. 03:30, blok 5 ok. 05:00, szkice README
+i AI_LOG ok. 05:45. Blok dłuższy o ponad 30 minut → najprostsza działająca droga i zapis
+w raporcie.
+
+**Granice:** `main` bez zmian (merge rano z właścicielem); najwyżej 8 płatnych wywołań API;
+rozwidlenie → rozsądny domyślny wybór i zapis w raporcie; stop tylko przed czymś
+nieodwracalnym (pieniądze, sekrety, produkcja). Praca wyłącznie w tym repozytorium i katalogu
+tymczasowym sesji: bez zmian w systemie, bez instalacji globalnych.
+
 - [x] **0. Środowisko** (10.11, ok. 22:15) — brief własnymi słowami, ta roadmapa, zasady dla
       agenta (`CLAUDE.md`), `AI_LOG.md`, publiczne repozytorium z czystą historią i ukrytym e-mailem.
 - [x] **1. Szkielet i CI** (10.11, ok. 23:30) — Vite + React + TypeScript `strict`, ESLint +
@@ -40,6 +69,18 @@ po drodze.
       z PDF-fikstury i skanu; `check-dist` sprawdza, że plik workera jest w `dist/` i bundle się
       do niego odwołuje, a `smoke.mjs` pobiera go z Pages; sprawdzenie w Chrome, także 360 px
       (okno nie zwęża się do 360 — iframe o szerokości 360).
+      Plan z 11.11 (zaakceptowany): `src/lib/pdfFile.ts` — kolejno: jeden plik, niepusty,
+      do 10 MB (przed czytaniem), sygnatura `%PDF-` w pierwszych 1024 bajtach (PDF poznajemy po
+      treści, nie po nazwie i MIME). `src/lib/pdfText.ts` — `pdfjs-dist`, `isEvalSupported:
+      false`, tekst stronami (`hasEOL` → nowa linia, strony oddzielone pustą linią); błędy: skan
+      (brak liter i cyfr `\p{L}\p{N}`), hasło, uszkodzony plik. `src/lib/pdfWorker.ts` — worker
+      przez `?url`, import w `main.tsx`. Fikstury PDF generowane w kodzie testu (bez binarnych
+      plików). `src/components/PdfDrop.tsx`: strefa upuszczania + prawdziwy `<button>` z ukrytym
+      `<input type="file">`; `preventDefault` na `window` dla upuszczenia obok strefy; stany:
+      pusty, czytanie (`aria-live`), gotowe („Odczytano …: N stron, M znaków”), błąd
+      (`role="alert"`); liczy się ostatnio wybrany plik; liczba mnoga przez `Intl.PluralRules`.
+      Bez cMaps i czcionek standardowych pdf.js (potrzebne do rysowania) — ograniczenie w README.
+      pdf.js importowany statycznie; jeśli build ostrzeże o chunku > 500 kB — leniwy `import()`.
 - [ ] **4. Backend** (F-03, F-04) — `api/analyze.ts` na Vercel: POST z tekstem, nazwą pliku
       i liczbą stron; CORS tylko dla `https://ramir3230.github.io`; limit rozmiaru tekstu i limit
       żądań na IP; Claude ze structured output; treść PDF oddzielona od instrukcji; jedna ponowna
