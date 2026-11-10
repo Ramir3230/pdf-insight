@@ -18,10 +18,12 @@ Demo: https://ramir3230.github.io/pdf-insight/
 Frontend i backend deployują się osobno:
 
 - frontend buduje GitHub Actions i publikuje na Pages;
-- backend wysyła na Vercel komenda `vercel deploy --prod`, bez integracji z GitHubem. Adres
-  produkcyjny: `https://pdf-insight-pearl.vercel.app/api/analyze` (zmienna repozytorium
-  `VITE_API_URL`). Adresy podglądu Vercel wymagają logowania, dlatego frontend zawsze używa
-  adresu produkcyjnego.
+- backend wysyła na Vercel `npm run deploy:api` (`scripts/deploy-api.mjs`), bez integracji
+  z GitHubem. Skrypt odmawia przy niezatwierdzonych zmianach (produkcja odpowiada commitowi),
+  po deployu sprawdza, że `vercel` niczego nie zmienił w repozytorium, i uruchamia test dymny
+  API. Adres produkcyjny: `https://pdf-insight-pearl.vercel.app/api/analyze` (zmienna
+  repozytorium `VITE_API_URL`). Adresy podglądu Vercel wymagają logowania, dlatego frontend
+  zawsze używa adresu produkcyjnego.
 - `vercel.json` wyłącza budowanie frontendu na Vercel; `.vercelignore` to lista dozwolonych
   plików (tylko backend). Statycznie Vercel serwuje tylko `vercel-static/robots.txt`, który
   zabrania indeksowania.
@@ -32,8 +34,9 @@ Wymagany Node.js 24.
 
 ```sh
 npm ci
+git config core.hooksPath .githooks   # hook pre-commit: blokuje commit z kluczem API
 npm run dev      # serwer deweloperski Vite
-npm run check    # wszystkie kontrole, te same co w CI
+npm run check    # kontrole z CI (CI dodatkowo uruchamia npm audit)
 ```
 
 Zmienne środowiskowe — w `.env.example` (bez wartości).
@@ -44,18 +47,25 @@ Zmienne środowiskowe — w `.env.example` (bez wartości).
 Vitest, build, a potem skrypty z `scripts/`:
 
 - `check-dist.mjs` — każdy lokalny adres w `dist/index.html` zaczyna się od `/pdf-insight/`
-  i wskazuje na istniejący plik.
-- `check-secrets.mjs` — brak klucza API Anthropic w plikach repozytorium, w całej historii git
-  i w `dist/`; `src/` i `dist/` nie odwołują się do zmiennej z kluczem; `.env.example` bez
-  wartości klucza. Znalezionej wartości nie drukuje.
+  i wskazuje na istniejący plik; strona ma znacznik wersji `<meta name="build">`.
+- `check-secrets.mjs` — brak klucza API Anthropic w plikach na dysku, w indeksie git, w całej
+  historii git (zmiany, także z commitów merge, wiadomości commitów, opisy tagów) i w `dist/`;
+  pliki w UTF-16 też są sprawdzane. `src/` i `dist/` nie odwołują się do zmiennej z kluczem;
+  `.env.example` bez wartości klucza. Znalezionej wartości nie drukuje.
 - `check-readme-deps.mjs` — każda zależność z `package.json` jest opisana niżej.
 
 ESLint traktuje jako błąd `console` (wyjątek: `console.error` w backendzie), `any`
 i `dangerouslySetInnerHTML`; komentarze `eslint-disable` są wyłączone.
 
+Klucz w historii git to dyskwalifikacja, której nie da się cofnąć bez przepisywania historii,
+dlatego są trzy warstwy: hook `.githooks/pre-commit` (`check-secrets.mjs --staged`) zatrzymuje
+commit z kluczem; GitHub secret scanning z push protection jest włączony w repozytorium; CI
+sprawdza całą historię po każdym pushu.
+
 CI (`.github/workflows/ci.yml`) na każdy push: `npm audit --audit-level=high`, `npm run check`;
-na `main` dodatkowo deploy na GitHub Pages i test dymny `scripts/smoke.mjs` (demo odpowiada 200,
-backend działa bez logowania, CORS przepuszcza domenę demo i odrzuca obcą).
+na `main` dodatkowo deploy na GitHub Pages i test dymny `scripts/smoke.mjs`: demo odpowiada 200
+i podaje wersję z właśnie zbudowanego commita, backend działa bez logowania, CORS przepuszcza
+domenę demo i odrzuca obcą.
 
 ## Zależności
 

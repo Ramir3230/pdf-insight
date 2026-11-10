@@ -22,4 +22,15 @@ Format: **co poszło nie tak** → **reguła lub kontrola** (gdzie mieszka).
    `git diff .gitignore` i `git status`, a po `vercel link` także integrację Git (jeśli się
    pojawiła — `vercel git disconnect`). Ustawienia projektu Vercel trzymać w `vercel.json`,
    a nie w panelu: link zapisał w projekcie katalog `dist` z wykrytego Vite i pierwszy deploy
-   padł.
+   padł. Od teraz backend wdraża `npm run deploy:api`, który sam sprawdza `git status` po
+   komendzie `vercel`.
+4. **Kontrole obiecywały więcej, niż sprawdzały** (blok 1, wyłapał recenzent): `check-secrets`
+   miał przeszukiwać „całą historię”, a `git log -p` pomija zmiany z commitów merge, wiadomości
+   commitów i opisy tagów; pliki w UTF-16 (domyślny `>` w PowerShell 5.1) i wersje w indeksie
+   przechodziły. `smoke.mjs` „czekał na nową wersję na CDN”, ale przyjmował dowolną odpowiedź 200. → Komentarz lub README opisuje tylko to, co jest sprawdzone próbką, która musi oblać;
+   dla każdej obietnicy kontroli jest osobna próbka (merge, wiadomość, tag, UTF-16, indeks,
+   stara wersja na CDN).
+5. **Ryzyko: fałszywy klucz w teście** (blok 1, recenzent): mock `sk-ant-test…` w commicie
+   oblewa CI na zawsze, a usunięcie z historii wymaga force-pusha do `main`. → Reguła
+   w `CLAUDE.md` (żadnych literałów `sk-ant-`) i hook `.githooks/pre-commit`, który zatrzymuje
+   taki commit, zanim powstanie.
