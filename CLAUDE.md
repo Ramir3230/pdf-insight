@@ -58,6 +58,12 @@ przed deployem. Merge do `main` = deploy na Pages, więc tylko po akceptacji wł
 
 ## Sekrety
 
+**Żadnych literałów `sk-ant-…` w kodzie, testach, mockach i dokumentach — nawet fałszywych.**
+Kontrola historii nie odróżnia fałszywego klucza od prawdziwego, a raz zacommitowany oblewa CI
+na zawsze (usunięcie wymaga force-pusha do `main`). W testach klucz to np. `"test-key"`. Hook
+`.githooks/pre-commit` zatrzymuje taki commit — włączony przez `git config core.hooksPath
+.githooks`. Backend wdraża się tylko przez `npm run deploy:api`.
+
 `ANTHROPIC_API_KEY` jest tylko w zmiennych środowiskowych Vercel. Wpisuje go właściciel
 (`vercel env add`), agent nie widzi i nie drukuje wartości. Pliki `.env*` są poza gitem, wyjątek —
 `.env.example` bez wartości. Po każdej komendzie `vercel` sprawdzić `git diff .gitignore`.

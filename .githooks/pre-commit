@@ -1,0 +1,4 @@
+#!/bin/sh
+# Blokuje commit z kluczem API Anthropic. Klucza raz wpuszczonego do historii nie da się usunąć bez
+# force-pusha, więc łapiemy go przed commitem. Włączenie: git config core.hooksPath .githooks
+exec node scripts/check-secrets.mjs --staged
