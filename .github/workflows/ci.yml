@@ -7,15 +7,23 @@ on:
 permissions:
   contents: read
 
+# Jeden przebieg naraz na gałąź. Na main kolejne przebiegi czekają (bez anulowania), więc deploy
+# starszego commita nigdy nie nadpisze nowszego. Na innych gałęziach nowszy push anuluje starszy.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
 jobs:
   check:
     name: audit › check › build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
         with:
           # check-secrets przeszukuje całą historię git, a nie tylko ostatni commit.
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -35,15 +43,13 @@ jobs:
     needs: check
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    concurrency:
-      group: pages
-      cancel-in-progress: false
     steps:
       - id: deployment
         uses: actions/deploy-pages@v5
@@ -52,11 +58,15 @@ jobs:
     name: test dymny demo i backendu
     needs: deploy
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # GITHUB_SHA ustawia Actions: test czeka, aż Pages poda wersję z tego commita.
       - run: node scripts/smoke.mjs
         env:
           API_URL: ${{ vars.VITE_API_URL }}

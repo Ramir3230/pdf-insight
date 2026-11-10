@@ -21,6 +21,11 @@ function checkIndexHtml() {
   if (!/<script[^>]+type="module"[^>]+src="/.test(html)) {
     fail(`${indexPath}: brak skryptu aplikacji`);
   }
+  // Test dymny po deployu rozpoznaje wersję po tym znaczniku (vite.config.ts wstawia commit).
+  const build = /<meta name="build" content="([^"]*)"/.exec(html)?.[1];
+  if (!build || build.includes("__")) {
+    fail(`${indexPath}: brak wersji w <meta name="build"> (jest: ${build ?? "brak"})`);
+  }
 
   let problems = 0;
   for (const url of local) {
