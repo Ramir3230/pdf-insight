@@ -7,10 +7,14 @@ po drodze.
 
 - [x] **0. Środowisko** (10.11, ok. 22:15) — brief własnymi słowami, ta roadmapa, zasady dla
       agenta (`CLAUDE.md`), `AI_LOG.md`, publiczne repozytorium z czystą historią i ukrytym e-mailem.
-- [ ] **1. Szkielet i CI** — Vite + React + TypeScript `strict`, ESLint + Prettier, Vitest; jedna
-      komenda `npm run check` (tsc, eslint, prettier, testy, build); `base: '/pdf-insight/'`;
-      workflow Actions: check › build › deploy na Pages. Efekt: pusta strona widoczna pod adresem
-      demo.
+- [x] **1. Szkielet i CI** (10.11, ok. 23:30) — Vite + React + TypeScript `strict`, ESLint +
+      Prettier, Vitest; jedna komenda `npm run check` (tsc, eslint, prettier, testy, build);
+      `base: '/pdf-insight/'`; workflow Actions: check › build › deploy na Pages. Efekt: pusta
+      strona widoczna pod adresem demo.
+      Po drodze: kontrole sekretów (pliki, indeks, cała historia, `dist/`), ścieżek `dist/`
+      i zależności w README; hook pre-commit; test dymny po deployu; backend-zaślepka z CORS
+      na Vercel (`https://pdf-insight-pearl.vercel.app/api/analyze`) wdrażany przez
+      `npm run deploy:api`. TypeScript 6 i ESLint 9 zamiast najnowszych — zgodność wtyczek.
 - [ ] **2. Schemat** — `src/lib/schema.ts` (Zod, dokładnie według briefu) i testy Vitest:
       poprawny wynik przechodzi; brak pola, zły `type`, zła data, zła waluta, `summary` spoza 3–5
       zdań — odrzucone.
