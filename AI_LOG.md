@@ -37,6 +37,15 @@ kontrolą w kodzie, która go pilnuje.
   sekretów „całej historii” pomijała zmiany z commitów merge, wiadomości commitów, tagi, pliki
   w UTF-16 i indeks git; test dymny przyjmował starą wersję strony z CDN. Poprawione, każdy
   przypadek sprawdzony próbką z podrzuconym fałszywym kluczem albo starą wersją.
+- **Schemat zmuszał model do zgadywania waluty** (blok 2, znalazł recenzent). W planie agenta
+  `currency` była obowiązkowa, więc przy kwocie bez waluty model musiałby ją zgadnąć albo
+  pominąć kwotę — wbrew zasadzie briefu „model nie zgaduje”. Poprawka: `currency` może być
+  `null`.
+- **Komentarze znów obiecywały więcej niż kod** (blok 2, znalazł recenzent; powtórka z bloku 1).
+  Komentarz mówił o ponownej próbie i wywołaniu z backendu, których jeszcze nie ma, a test
+  nazwany „zgodność z modelem” sprawdzał tylko konwersję do JSON Schema. Poprawka: komentarze
+  opisują obecny kod, nazwa testu — dokładnie to, co sprawdza; prawdziwą zgodność z SDK
+  sprawdzi test w bloku 4 (zapisane w `ROADMAP.md`).
 
 ## Dziennik
 
@@ -118,3 +127,35 @@ z merge'ami, wiadomościami i tagami; test dymny czeka na wersję z właśnie zb
 (`<meta name="build">`), ma limity czasu i sprawdza kod odpowiedzi; CI nie nadpisze nowszego
 deployu starszym; backend wdraża `npm run deploy:api`, który odmawia przy niezatwierdzonych
 zmianach. Kontrola workera pdf.js w `dist/` przeszła do bloku 3, gdzie pojawia się pdf.js.
+
+### 11.11, ok. 00:00 — blok 2: schemat wyniku
+
+> «Окей блок 2. Пиши план»
+>
+> „Dobrze, blok 2. Napisz plan.”
+
+Przed planem agent sprawdził w rejestrze npm, z jaką wersją Zoda współpracuje pomocnik
+`zodOutputFormat` z SDK Anthropic (Zod 3.25+ albo 4), a w dokumentacji Claude API — których
+ograniczeń structured outputs nie egzekwują (długości list i tekstów). Plan z tabelą reguł pól
+zaakceptowałem: «Поехали» — „Jedziemy.”
+
+Co powstało:
+
+- `src/lib/schema.ts` — dwa schematy Zod: odpowiedź modelu (podsumowanie jako lista 3–5 zdań, bez
+  `fileName` i `pages`) i wynik końcowy według briefu; funkcja `toAnalysisResult`, która je
+  łączy; `sourceFileSchema` dla danych pliku;
+- `src/lib/schema.test.ts` — 45 testów: poprawne odpowiedzi, granice 3–5 zdań i 3–7 punktów,
+  odrzucenie brakującego pola, złego typu, dat, walut, języka, pustego tekstu; kolejność kluczy
+  w pobieranym JSON.
+
+Każdy test odrzucenia sprawdza, które pole zostało odrzucone, a nie tylko sam fakt odrzucenia —
+inaczej test „brak pola” mógłby przejść przez przypadkowy błąd w innym miejscu próbki. Testy
+agent sprawdził na celowo popsutym schemacie: po usunięciu reguły czerwienieje dokładnie ten
+test, który jej pilnuje.
+
+Recenzent nie znalazł blokerów. Najważniejsze uwagi: obowiązkowa waluta zmuszała model do
+zgadywania, a komentarze i nazwa jednego testu obiecywały więcej, niż sprawdza kod (opis
+w „Gdzie AI się pomyliło”). Poza tym: tekst z samych spacji przechodził, dane pliku były opisane
+dwa razy, test kolejności kluczy nie dowodził tego, co miał dowieść. Wszystko poprawione.
+Recenzent zauważył też, że `npx vitest run` z Git Bash daje fałszywą czerwień — wpis
+w `.claude/gotchas.md`.

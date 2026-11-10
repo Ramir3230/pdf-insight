@@ -34,3 +34,12 @@ Format: **co poszło nie tak** → **reguła lub kontrola** (gdzie mieszka).
    oblewa CI na zawsze, a usunięcie z historii wymaga force-pusha do `main`. → Reguła
    w `CLAUDE.md` (żadnych literałów `sk-ant-`) i hook `.githooks/pre-commit`, który zatrzymuje
    taki commit, zanim powstanie.
+6. **Komentarze i nazwa testu znów obiecywały więcej niż kod** (blok 2, recenzent; powtórka
+   punktu 4): „błąd oznacza ponowną próbę” i „wywołuje go backend”, choć backendu z ponowieniem
+   jeszcze nie ma; test „zgodność z modelem” sprawdzał tylko `z.toJSONSchema`, a nie to, co SDK
+   wysyła do API. → Komentarz opisuje kod w obecnym stanie, plany kolejnych bloków idą do
+   `ROADMAP.md`. Nazwa testu mówi dokładnie to, co test sprawdza.
+7. **Testy uruchomione z Git Bash dają fałszywą czerwień** (blok 2, recenzent): `npx vitest run`
+   pada przed pierwszym testem (`Cannot read properties of undefined (reading 'config')`),
+   a w PowerShell wszystko jest zielone. Sprawdzone na obu powłokach. → Komendy npm uruchamiać
+   w PowerShell; recenzent dostaje tę regułę w poleceniu.

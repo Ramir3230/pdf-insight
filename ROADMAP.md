@@ -20,14 +20,19 @@ po drodze.
       wpis w `AI_LOG.md`, odhaczenie tutaj i stop na pytania właściciela; przed każdym merge'em do
       `main` — wszystkie teksty interfejsu jedną listą dla właściciela.
 
-- [ ] **2. Schemat** — `src/lib/schema.ts` (Zod, dokładnie według briefu) i testy Vitest:
-      poprawny wynik przechodzi; brak pola, zły `type`, zła data, zła waluta, `summary` spoza 3–5
-      zdań — odrzucone.
+- [x] **2. Schemat** (11.11, ok. 00:30) — `src/lib/schema.ts` (Zod, dokładnie według briefu)
+      i testy Vitest: poprawny wynik przechodzi; brak pola, zły `type`, zła data, zła waluta,
+      `summary` spoza 3–5 zdań — odrzucone.
       Ustalenia: dwa schematy — odpowiedź modelu (`summary` jako lista 3–5 zdań, bo structured
       outputs nie ograniczają długości, a liczenie zdań po kropkach psuje „sp. z o.o.”) i wynik
       końcowy według briefu (`summary` jako tekst sklejony na backendzie; `fileName`, `pages`
       z pdf.js). Testy także: zły język, `keyPoints` spoza 3–7. Importy względne w `src/lib`
       z rozszerzeniem `.js` (backend kompiluje je jako NodeNext).
+      Po drodze: Zod 4; `toAnalysisResult` skleja wynik końcowy; `sourceFileSchema` — dane pliku
+      jednym schematem; `currency` może być `null` (kwota bez waluty, model nie zgaduje —
+      wyłapał recenzent); tekst z samych spacji odrzucany (`trim`); `tsconfig.json` backendu
+      kompiluje schemat już teraz. Każdy test odrzucenia sprawdza ścieżkę błędu, a nie samo
+      odrzucenie; testy przeszły próbę z celowo popsutym schematem.
 - [ ] **3. PDF w przeglądarce** (F-01, F-02) — drag & drop i wybór pliku, tylko PDF do 10 MB;
       pdf.js z workerem podpiętym przez Vite; tekst i liczba stron; PDF bez warstwy tekstowej —
       komunikat, że skanów nie obsługujemy.
@@ -51,6 +56,11 @@ ANTHROPIC_API_KEY` wpisuje sam — agent nie widzi wartości.
       Deploy tylko `npm run deploy:api`. Płatny przebieg `scripts/live-check.mjs` na produkcji:
       umowa testowa (typ, strony, kwoty, daty, czas) z oczekiwaniami w `private/` i PDF
       z wstrzykniętym poleceniem (polecenie nie wykonane); do 8 wywołań z doborem `effort`.
+      Z bloku 2: test bez sieci z `zodOutputFormat(modelOutputSchema)` — co SDK wysyła do API
+      (m.in. długi `pattern` z `z.iso.date()`), a pierwsze płatne wywołanie potwierdza, że API
+      to przyjmuje; nazwa pliku i liczba stron z żądania sprawdzane `sourceFileSchema` (400).
+      W prompcie: daty bez dnia pomijać, kwota bez waluty → `currency: null`, krótki dokument —
+      minimum 3 zdań i 3 punktów bez dopisywania faktów.
 - [ ] **5. Interfejs** (F-05, F-06) — stan pusty, ładowanie, błąd z ponowieniem; podsumowanie,
       kluczowe punkty, podmioty, kwoty, daty, słowa kluczowe; podgląd i pobranie JSON; informacja,
       że tekst trafia do API AI; od 360 px, klawiatura, kontrast.
