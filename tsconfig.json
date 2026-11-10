@@ -1,0 +1,23 @@
+{
+  // Kod uruchamiany w Node: funkcja Vercel (api/, server/), skrypty kontrolne i konfiguracja Vite.
+  // Vercel kompiluje api/ według tego pliku w katalogu głównym, dlatego jest to konfiguracja
+  // backendu, a nie plik z "references" (Vercel nie obsługuje project references).
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedIndexedAccess": true,
+    "verbatimModuleSyntax": true,
+    "allowJs": true,
+    "checkJs": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["api", "server", "scripts", "vite.config.ts"]
+}

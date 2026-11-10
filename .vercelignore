@@ -1,0 +1,14 @@
+# Na Vercel trafia tylko backend: lista dozwolonych plików zamiast listy zakazanych.
+# Dzięki temu private/, .env* i frontend nie są wysyłane nawet przez pomyłkę.
+/*
+!api
+!server
+!src
+/src/*
+!/src/lib
+!package.json
+!package-lock.json
+!tsconfig.json
+!vercel.json
+!vercel-static
+*.test.ts

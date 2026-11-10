@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "buildCommand": "echo 'Tylko backend: frontend buduje GitHub Actions'",
+  "outputDirectory": "vercel-static",
+  "functions": {
+    "api/analyze.ts": { "maxDuration": 60 }
+  }
+}

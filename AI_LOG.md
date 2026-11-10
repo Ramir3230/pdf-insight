@@ -1,0 +1,120 @@
+# AI_LOG — praca z AI
+
+Narzędzia, kluczowe prompty, miejsca, w których AI się pomyliło, i to, jak je poprawiłem.
+Prowadzony na bieżąco. Z agentem pracuję po rosyjsku, dlatego prompty podaję w oryginale
+z tłumaczeniem na polski.
+
+## Narzędzia
+
+- **Claude Code** — kod, dokumenty, testy, CI. Praca blokami: plan, moja akceptacja, wykonanie,
+  recenzja, wyjaśnienie, co powstało. Plan bloków powstał na modelu Claude Fable 5.2, od bloku 1
+  pracuję na Claude Opus 5.5 (przełączyłem komendą `/model`).
+- **Agent recenzent `code-reviewer`** — przegląd kodu na koniec bloków; sam niczego nie poprawia.
+- **Claude API** (`claude-opus-5-5`) — w samej aplikacji: podsumowanie i dane JSON.
+
+## Kluczowe prompty
+
+Wybór 3–5 — na koniec pracy.
+
+## Gdzie AI się pomyliło i jak to poprawiłem
+
+Uzupełniane na bieżąco. Każdy błąd agenta ma też wpis w `.claude/gotchas.md` z regułą albo
+kontrolą w kodzie, która go pilnuje.
+
+- **Fałszywy alarm w kontroli sekretów** (blok 1). Wzorzec `\s*` uznał pusty
+  `ANTHROPIC_API_KEY=` w `.env.example` za wypełniony, bo `\s` obejmuje znak nowej linii.
+  Poprawka: `[ \t]` zamiast `\s`; każda kontrola jest sprawdzana na próbce, która musi ją oblać,
+  i na takiej, która musi przejść.
+- **Test dymny nie odróżniał adresu podglądu od produkcyjnego** (blok 1). Agent założył, że
+  chroniony adres Vercel odpowie 401 na zapytanie CORS (OPTIONS), a Vercel odpowiada 204. Wyszło
+  na próbce, która musiała oblać. Poprawka: logowanie sprawdzamy zapytaniem POST.
+- **`vercel link` zmienił projekt bez pytania** (blok 1). Podłączył repozytorium GitHub wbrew
+  planowi, pobrał token do `.env.local` i dopisał do `.gitignore` regułę, która unieważniała
+  wyjątek dla `.env.example`. Agent to wyłapał przy obowiązkowym `git diff .gitignore`, odłączył
+  integrację, cofnął `.gitignore`, usunął plik z tokenem. Teraz to sprawdza skrypt
+  `deploy:api`.
+- **Kontrole obiecywały więcej, niż sprawdzały** (blok 1, znalazł recenzent). Kontrola
+  sekretów „całej historii” pomijała zmiany z commitów merge, wiadomości commitów, tagi, pliki
+  w UTF-16 i indeks git; test dymny przyjmował starą wersję strony z CDN. Poprawione, każdy
+  przypadek sprawdzony próbką z podrzuconym fałszywym kluczem albo starą wersją.
+
+## Dziennik
+
+### 10.11, ok. 22:00 — środowisko
+
+Brief przeczytał Claude Code w sesji, w której prowadzę poszukiwanie pracy. Poprosiłem, żeby nie
+budował aplikacji tam, tylko przygotował osobny projekt:
+
+> «Хорошо. Но это же не тут надо делать ? Мы можем отсюда создать среду. Создать ветку и через нее
+> создать среду. Роадмап. и тд. Я скину файлы. И потом я продолжу работу непосредсвтенно оттуда.»
+>
+> „Dobrze, ale przecież to nie tutaj trzeba robić? Stąd możemy przygotować środowisko: gałąź,
+> roadmapę i tak dalej. Wrzucę pliki, a potem będę pracował już stamtąd.”
+
+Agent wyciągnął z briefu wymagania i zadał cztery pytania z rekomendacjami. Moje decyzje:
+
+- backend — Vercel Functions (znam Vercel i mam tam konto);
+- AI — Claude API; agent polecał darmowe Gemini ze względu na „darmowe limity” z briefu;
+- dokumenty repozytorium po polsku;
+- publiczne repozytorium od pierwszego commita, żeby deploy na Pages sprawdzić od razu, a nie
+  przed samym terminem.
+
+Efekt: `BRIEF.md` (brief własnymi słowami), `ROADMAP.md`, `CLAUDE.md` (zasady dla agenta), ten
+plik, repozytorium z ukrytym e-mailem GitHub w commitach.
+
+### 10.11, ok. 22:20 — plan bloków 1–6
+
+Nowa sesja w folderze projektu. Poprosiłem o plan i dołożyłem listę kontroli, które mają łapać
+dyskwalifikację i standardy briefu kodem, a nie uwagą:
+
+> «Покажи план блоков 1–6: что делаешь ты, что я. […] Добавь в план проверки, которые ловят
+> дисквалификацию и стандарты брифа кодом, а не вниманием: […] поиск ключа (sk-ant-) в файлах,
+> во всей истории git и в dist/ […] Тесты бэкенда без сети […] Один платный прогон на настоящем
+> API […] Смоук после деплоя […] Файл граблей .claude/gotchas.md: ошибка агента → правило или
+> проверка. […] Фронтенд ходит на основной адрес Vercel, не на превью (у превью Vercel вход по
+> логину). […] перед мержем в main покажи мне все строки интерфейса одним списком.»
+>
+> „Pokaż plan bloków 1–6: co robisz ty, a co ja. […] Dodaj do planu kontrole, które wyłapują
+> dyskwalifikację i standardy briefu kodem, a nie uwagą: […] szukanie klucza (sk-ant-) w plikach,
+> w całej historii git i w dist/ […] testy backendu bez sieci […] jeden płatny przebieg na
+> prawdziwym API […] test dymny po deployu […] plik grabi .claude/gotchas.md: błąd agenta →
+> reguła albo kontrola. […] Frontend łączy się z głównym adresem Vercel, a nie z podglądem
+> (podgląd Vercel wymaga logowania). […] przed merge'em do main pokaż mi wszystkie teksty
+> interfejsu jedną listą.”
+
+Agent rozłożył kontrole na bloki i zaproponował zmiany względem roadmapy: projekt Vercel już
+w bloku 1 (deploy backendu to największe ryzyko nocy), `summary` od modelu jako lista zdań
+sklejana na backendzie (structured outputs nie ograniczają długości), deploy backendu komendą
+`vercel deploy --prod` bez integracji z GitHubem. Zaakceptowałem: «Хорошо поехали блок 1.» —
+„Dobrze, jedziemy z blokiem 1.”
+
+### 10.11, ok. 22:30 — blok 1: szkielet, CI, kontrole
+
+Co powstało:
+
+- szkielet Vite + React + TypeScript `strict`, `base: '/pdf-insight/'`, strona „w budowie”;
+- ESLint z błędami dla `console`, `any`, `dangerouslySetInnerHTML` i dostępności (`jsx-a11y`),
+  komentarze `eslint-disable` wyłączone; Prettier; Vitest;
+- `npm run check` i trzy skrypty: `check-dist` (ścieżki pod `/pdf-insight/`), `check-secrets`
+  (klucz w plikach, w całej historii git, w `dist/`), `check-readme-deps` (każda zależność
+  opisana w README);
+- backend-zaślepka na Vercel z prawdziwym CORS: przepuszcza tylko domenę demo;
+- CI: `npm audit`, `npm run check`, deploy na Pages z `main`, test dymny `smoke.mjs`;
+- `.claude/gotchas.md` — grabie agenta.
+
+Każdą kontrolę agent uruchomił na próbce, która musi ją oblać: podrzucony fałszywy klucz w pliku,
+w `dist/` i w commicie na tymczasowym klonie; zakazane konstrukcje w próbnych plikach dla
+ESLint; chroniony adres Vercel dla testu dymnego. Dwie z tych próbek wykryły błędy w samych
+kontrolach (opis w „Gdzie AI się pomyliło”).
+
+Wersje: najnowsze TypeScript 7 i ESLint 10 nie współpracują jeszcze z `typescript-eslint`
+i wtyczkami React, dlatego TypeScript 6.0 i ESLint 9 — powód zapisany w README.
+
+Recenzent (`code-reviewer`) nie znalazł blokerów, ale wskazał 10 problemów, głównie w samych
+kontrolach. Najważniejszy: fałszywy klucz w przyszłym teście backendu oblałby CI na zawsze,
+bo historii nie da się wyczyścić bez force-pusha do `main`. Agent dodał hook pre-commit, który
+zatrzymuje commit z kluczem, i regułę w `CLAUDE.md`. Poza tym: historia sprawdzana razem
+z merge'ami, wiadomościami i tagami; test dymny czeka na wersję z właśnie zbudowanego commita
+(`<meta name="build">`), ma limity czasu i sprawdza kod odpowiedzi; CI nie nadpisze nowszego
+deployu starszym; backend wdraża `npm run deploy:api`, który odmawia przy niezatwierdzonych
+zmianach. Kontrola workera pdf.js w `dist/` przeszła do bloku 3, gdzie pojawia się pdf.js.
