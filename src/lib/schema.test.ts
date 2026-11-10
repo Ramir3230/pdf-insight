@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import {
+  MAX_TEXT_CHARS,
   analysisResultSchema,
+  analyzeRequestSchema,
   modelOutputSchema,
   toAnalysisResult,
   type ModelOutput,
@@ -246,5 +248,32 @@ describe("toAnalysisResult i analysisResultSchema", () => {
     const parsed = analysisResultSchema.safeParse(result);
     expect(parsed.success).toBe(true);
     expect(parsed.data).not.toHaveProperty("newField");
+  });
+});
+
+describe("analyzeRequestSchema", () => {
+  const request = { fileName: "umowa.pdf", pages: 4, text: "Umowa serwisowa nr 14." };
+
+  it("przyjmuje tekst z danymi pliku", () => {
+    expect(analyzeRequestSchema.parse(request)).toEqual(request);
+  });
+
+  it(`przyjmuje dokładnie ${MAX_TEXT_CHARS} znaków i odrzuca znak więcej`, () => {
+    expect(
+      analyzeRequestSchema.safeParse({ ...request, text: "a".repeat(MAX_TEXT_CHARS) }).success,
+    ).toBe(true);
+    expectRejectedAt(analyzeRequestSchema, { ...request, text: "a".repeat(MAX_TEXT_CHARS + 1) }, [
+      "text",
+    ]);
+  });
+
+  it("odrzuca pusty tekst i tekst z samych spacji", () => {
+    expectRejectedAt(analyzeRequestSchema, { ...request, text: "" }, ["text"]);
+    expectRejectedAt(analyzeRequestSchema, { ...request, text: "  \n " }, ["text"]);
+  });
+
+  it("odrzuca brak nazwy pliku i złą liczbę stron", () => {
+    expectRejectedAt(analyzeRequestSchema, { ...request, fileName: "" }, ["fileName"]);
+    expectRejectedAt(analyzeRequestSchema, { ...request, pages: 0 }, ["pages"]);
   });
 });

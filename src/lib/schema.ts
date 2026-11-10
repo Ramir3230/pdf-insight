@@ -79,7 +79,17 @@ export const analysisResultSchema = modelOutputSchema.extend({
   summary: nonEmptyText,
 });
 
+// Najdłuższy tekst dokumentu, jaki przyjmuje backend: ok. 60–70 tys. tokenów. Dłuższy tekst to
+// wyższy koszt i dłuższe czekanie na wynik. Ten sam limit sprawdza frontend przed wysłaniem.
+export const MAX_TEXT_CHARS = 200_000;
+
+// Żądanie do backendu: tekst wyciągnięty z PDF w przeglądarce i dane pliku.
+export const analyzeRequestSchema = sourceFileSchema.extend({
+  text: nonEmptyText.max(MAX_TEXT_CHARS),
+});
+
 export type SourceFile = z.infer<typeof sourceFileSchema>;
+export type AnalyzeRequest = z.infer<typeof analyzeRequestSchema>;
 export type ModelOutput = z.infer<typeof modelOutputSchema>;
 export type AnalysisResult = z.infer<typeof analysisResultSchema>;
 
