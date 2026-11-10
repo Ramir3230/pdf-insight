@@ -9,7 +9,8 @@ Demo: https://ramir3230.github.io/pdf-insight/
 
 - `src/` — frontend (React + Vite, TypeScript `strict`), hosting na GitHub Pages.
   - `src/components/` — komponenty interfejsu.
-  - `src/lib/` — logika bez interfejsu; `src/lib/messages.ts` — wszystkie teksty interfejsu.
+  - `src/lib/` — logika bez interfejsu; `src/lib/messages.ts` — wszystkie teksty interfejsu;
+    `src/lib/schema.ts` — schemat wyniku (Zod), wspólny dla frontendu i backendu.
 - `api/analyze.ts` — funkcja Vercel, jedyny punkt wejścia backendu. Tylko odczyt ustawień.
 - `server/` — logika backendu (CORS, obsługa żądania), testowana bez sieci. Poza `api/`, bo
   Vercel zamienia każdy plik w `api/` w osobną funkcję.
@@ -74,6 +75,7 @@ Każda zależność ma powód. Bez zależności „na zapas”.
 | Pakiet                             | Po co                                                                        |
 | ---------------------------------- | ---------------------------------------------------------------------------- |
 | `react`, `react-dom`               | Interfejs (wymóg: React 18+)                                                 |
+| `zod`                              | Schemat wyniku: walidacja na backendzie i froncie, structured outputs Claude |
 | `vite`                             | Serwer deweloperski i build frontendu                                        |
 | `@vitejs/plugin-react`             | Obsługa React i JSX w Vite                                                   |
 | `typescript`                       | TypeScript `strict`. Wersja 6.0: `typescript-eslint` nie obsługuje jeszcze 7 |
