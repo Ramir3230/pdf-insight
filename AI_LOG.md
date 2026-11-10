@@ -46,6 +46,18 @@ kontrolą w kodzie, która go pilnuje.
   nazwany „zgodność z modelem” sprawdzał tylko konwersję do JSON Schema. Poprawka: komentarze
   opisują obecny kod, nazwa testu — dokładnie to, co sprawdza; prawdziwą zgodność z SDK
   sprawdzi test w bloku 4 (zapisane w `ROADMAP.md`).
+- **Opcja biblioteki z pamięci** (blok 3). W planie agent wpisał `isEvalSupported: false` dla
+  pdf.js jako zabezpieczenie; w pdf.js 6 tej opcji już nie ma. Złapał to `tsc`; agent sprawdził
+  w kodzie biblioteki, że groźnej ścieżki (`eval`, `new Function`) już tam nie ma. Reguła: opcje
+  bibliotek sprawdzać w typach w `node_modules`, nie z pamięci.
+- **Niewidoczne znaki w plikach** (blok 3, pierwszy znalazł recenzent). Narzędzie zapisu agenta
+  zamieniało zapis kodu twardej spacji (U+00A0) na sam znak — niewidoczny w edytorze. Trafiło
+  to do testu, konfiguracji ESLint, README i nawet do wpisu w grabiach o tym błędzie. Poprawka:
+  kontrola `check-invisible.mjs` w `npm run check` dla wszystkich plików tekstowych i reguła
+  ESLint dla napisów i komentarzy; kontrola od razu złapała kolejny przypadek.
+- **Komentarz „nie rzuca wyjątków” był nieprawdziwy** (blok 3, znalazł recenzent; trzecia
+  powtórka tego samego typu błędu). Gdy pliku nie dało się przeczytać, interfejs zostawał na
+  zawsze w stanie „Odczytuję…”. Poprawka i test, który na starym kodzie czerwienieje.
 
 ## Dziennik
 
@@ -159,3 +171,65 @@ w „Gdzie AI się pomyliło”). Poza tym: tekst z samych spacji przechodził, 
 dwa razy, test kolejności kluczy nie dowodził tego, co miał dowieść. Wszystko poprawione.
 Recenzent zauważył też, że `npx vitest run` z Git Bash daje fałszywą czerwień — wpis
 w `.claude/gotchas.md`.
+
+### 11.11, ok. 00:30 — decyzja o pracy w nocy
+
+> «Блок три давай план»
+>
+> „Blok trzeci, daj plan.”
+
+Agent pokazał plan i uczciwie policzył czas: przy tym tempie wszystkie MUST na demo dopiero
+około 04:00–05:00. Zapytałem:
+
+> «та не до утра я не буду сидеть это уже того прям не стоит. или стоит ?»
+>
+> „Nie, do rana nie będę siedział, to już naprawdę nie ma sensu. Czy jednak ma?”
+
+Agent zaproponował: ja robię teraz tylko to, czego nie może zrobić on (klucz API z limitem
+wydatków wpisany do Vercel), a bloki 3–5 robi sam w nocy, z recenzentem po każdym bloku; merge
+do `main` rano, ze mną. Zapytałem, co będzie, gdy zapełni mu się okno kontekstu:
+
+> «А каким образом ты сделаешь ? у тебя в моменте контекстное окно схопнится и что ты будешь
+> делать ?»
+>
+> „Jak to zrobisz? W pewnym momencie zapełni ci się okno kontekstu — i co wtedy?”
+
+Odpowiedź: stan pracy trzymany w plikach, nie w pamięci — cele nocy i plan bloku zapisane
+w `ROADMAP.md`, każdy krok to commit, decyzje i raporty po rosyjsku od razu w pliku poza gitem;
+po każdej kompresji kontekstu agent czyta je od nowa. Przed startem sprawdził, czy ma wszystko:
+uprawnienia, `git push`, `gh`, Vercel, przeglądarkę z lokalnym serwerem, ustawienia uśpienia
+komputera. Zgoda z granicą:
+
+> «Все хорошо начинай. Не чуди чтоб на компе моем ничего не случилось. Все в рамках этого
+> проекта этой задачи. Окей ?»
+>
+> „Wszystko dobrze, zaczynaj. Nie kombinuj, żeby na moim komputerze nic się nie stało. Wszystko
+> w ramach tego projektu i tego zadania. Okej?”
+
+### 11.11, ok. 00:50 — blok 3: PDF w przeglądarce
+
+Co powstało:
+
+- `src/lib/pdfFile.ts` — sprawdzenie pliku: jeden, niepusty, do 10 MB, nagłówek `%PDF-` (PDF
+  poznajemy po treści, nie po nazwie);
+- `src/lib/pdfText.ts` — tekst i liczba stron przez pdf.js; skan (mniej niż 50 liter na
+  stronę), hasło i uszkodzony plik jako kody błędów;
+- `src/lib/readPdf.ts` — oba kroki razem, bez wyjątków; `src/lib/pdfWorker.ts` — worker pdf.js;
+- `src/components/PdfDrop.tsx` i stany w `App.tsx`: przeciągnij-upuść, przycisk, „odczytuję”,
+  wynik odczytu, błąd z możliwością ponownego wyboru;
+- testy na małych plikach PDF budowanych w kodzie (`makeTestPdf.ts`), bez binarnych fikstur;
+- `check-dist` i test dymny sprawdzają worker pdf.js; nowa kontrola niewidocznych znaków.
+
+Sprawdzenie w przeglądarce (dev i build produkcyjny): umowa testowa — 12 stron, ok. 0,3–0,7 s;
+skan, plik > 10 MB, nie-PDF, pusty plik, dwa pliki naraz, upuszczenie obok strefy, ostatni
+wybrany plik wygrywa, fokus z klawiatury; szerokość 360 px w ramce `iframe`. Prawdziwego
+przeciągania z Eksploratora agent nie sprawdzi — zostaje dla mnie.
+
+Każdą nową kontrolę i test agent uruchomił na próbce, która musi oblać. Jedna z nich pokazała,
+po co sprawdzać typ odpowiedzi: serwer podglądu na brakujący plik workera oddał stronę HTML
+z kodem 200.
+
+Recenzent: jeden bloker (interfejs zawieszał się, gdy pliku nie dało się przeczytać) i dziesięć
+mniejszych uwag — skan z pieczątką tekstową przechodził jako tekst, testy, które nie dowodziły
+swojej nazwy, kontrast ramki, opis przycisku dla czytnika ekranu, ponawianie w teście dymnym.
+Wszystko poprawione, poprawki sprawdzone mutacjami kodu.

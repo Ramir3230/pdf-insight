@@ -62,7 +62,7 @@ tymczasowym sesji: bez zmian w systemie, bez instalacji globalnych.
       wyłapał recenzent); tekst z samych spacji odrzucany (`trim`); `tsconfig.json` backendu
       kompiluje schemat już teraz. Każdy test odrzucenia sprawdza ścieżkę błędu, a nie samo
       odrzucenie; testy przeszły próbę z celowo popsutym schematem.
-- [ ] **3. PDF w przeglądarce** (F-01, F-02) — drag & drop i wybór pliku, tylko PDF do 10 MB;
+- [x] **3. PDF w przeglądarce** (F-01, F-02; 11.11, ok. 01:25) — drag & drop i wybór pliku, tylko PDF do 10 MB;
       pdf.js z workerem podpiętym przez Vite; tekst i liczba stron; PDF bez warstwy tekstowej —
       komunikat, że skanów nie obsługujemy.
       Ustalenia: teksty tylko w `src/lib/messages.ts`; testy walidacji pliku, wyciągania tekstu
@@ -82,6 +82,17 @@ tymczasowym sesji: bez zmian w systemie, bez instalacji globalnych.
       (`role="alert"`); liczy się ostatnio wybrany plik; liczba mnoga przez `Intl.PluralRules`.
       Bez cMaps i czcionek standardowych pdf.js (potrzebne do rysowania) — ograniczenie w README.
       pdf.js importowany statycznie; jeśli build ostrzeże o chunku > 500 kB — leniwy `import()`.
+      Po drodze: `isEvalSupported` wypadł — pdf.js 6 nie ma tej opcji ani `eval`/`new Function`
+      w kodzie; wbrew planowi pdf.js zostaje statyczny, próg ostrzeżenia 800 kB z uzasadnieniem
+      w `vite.config.ts` (mały zysk, dodatkowy stan i loader); testy w Node na
+      `pdfjs-dist/legacy`. Z recenzji: `readPdf` nie rzuca przy nieczytelnym pliku (UI wisiał
+      w „Odczytuję…”); skan = średnio < 50 liter na stronę (skan z pieczątką tekstową);
+      błędy pdf.js przez `instanceof`; dostępność (kontrast ramki, `aria-describedby`, ramka
+      przycisku w trybie wysokiego kontrastu, kursor „nie można upuścić” obok strefy); test
+      dymny ponawia pobranie workera. Nowa kontrola `check-invisible.mjs` (grabie 8). Próbki,
+      które musiały oblać: `check-dist` bez workera i bez odwołania; `smoke` na obecnych Pages
+      i na kopii bez pliku workera (serwer oddał HTML z kodem 200 — stąd sprawdzanie typu);
+      mutacje kodu — każdy test czerwienieje na swoim błędzie.
 - [ ] **4. Backend** (F-03, F-04) — `api/analyze.ts` na Vercel: POST z tekstem, nazwą pliku
       i liczbą stron; CORS tylko dla `https://ramir3230.github.io`; limit rozmiaru tekstu i limit
       żądań na IP; Claude ze structured output; treść PDF oddzielona od instrukcji; jedna ponowna

@@ -43,3 +43,21 @@ Format: **co poszło nie tak** → **reguła lub kontrola** (gdzie mieszka).
    pada przed pierwszym testem (`Cannot read properties of undefined (reading 'config')`),
    a w PowerShell wszystko jest zielone. Sprawdzone na obu powłokach. → Komendy npm uruchamiać
    w PowerShell; recenzent dostaje tę regułę w poleceniu.
+8. **Narzędzie zapisu wstawia niewidoczne znaki zamiast kodu** (blok 3): `\u00a0` napisane
+   w Write/Edit trafiło do plików (test, `eslint.config.js`, README) jako dosłowna twarda
+   spacja — wyłapał recenzent w teście, potem ESLint i kontrola w dwóch kolejnych plikach.
+   `\x20` zostaje bez zmian, psuje się tylko `\uXXXX`. → `scripts/check-invisible.mjs`
+   w `npm run check` (wszystkie pliki tekstowe) i ESLint `no-irregular-whitespace` także
+   w napisach i komentarzach. Takie znaki w kodzie budować liczbami albo przez PowerShell
+   (`[char]92 + 'u00a0'`) i sprawdzać bajty.
+9. **Plan zawierał opcję biblioteki z pamięci** (blok 3): `isEvalSupported: false` dla pdf.js —
+   w wersji 6 tej opcji już nie ma; złapał to `tsc`. → Opcje i nazwy z bibliotek sprawdzać
+   w typach w `node_modules` (albo w skillu) przed wpisaniem do planu, nie z pamięci.
+10. **Komentarz „nie rzuca wyjątków” był nieprawdziwy** (blok 3, recenzent; trzecia powtórka
+    punktów 4 i 6): `readPdf` czytał nagłówek pliku poza `try`, a błąd czytania zostawiał
+    interfejs na zawsze w „Odczytuję…”. → Każda obietnica w komentarzu ma test, który ją łamie
+    na złym kodzie (tu: `readFailed` przy nieczytelnym pliku — sprawdzony na starym kodzie).
+    Przed oddaniem bloku: przejść komentarze nowych plików i zapytać „który test to dowodzi?”.
+11. **Commit mimo czerwonego Prettiera** (blok 3): komendy połączone `;` zrobiły commit, choć
+    `prettier --check` zgłosił błąd — potrzebny był drugi commit. → Commit tylko za
+    `if ($?) { … }` albo po zielonym `npm run check`.
