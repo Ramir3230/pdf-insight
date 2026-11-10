@@ -61,6 +61,11 @@ describe("modelOutputSchema: poprawna odpowiedź", () => {
     expect(result.success).toBe(true);
   });
 
+  it("przyjmuje kwotę bez waluty", () => {
+    const output = { ...validOutput(), amounts: [{ value: 100, currency: null, context: "kara" }] };
+    expect(modelOutputSchema.safeParse(output).success).toBe(true);
+  });
+
   it.each([3, 5])("przyjmuje podsumowanie z %i zdań", (count) => {
     const result = modelOutputSchema.safeParse({ ...validOutput(), summary: sentences(count) });
     expect(result.success).toBe(true);
@@ -132,13 +137,27 @@ describe("modelOutputSchema: odrzucone odpowiedzi", () => {
     expectRejectedAt(modelOutputSchema, output, ["keyPoints"]);
   });
 
-  it("odrzuca pusty tekst zamiast pustej listy", () => {
-    const output = { ...validOutput(), keywords: [""] };
+  it.each(["", "   ", "\n"])("odrzuca tekst bez treści: %j", (keyword) => {
+    const output = { ...validOutput(), keywords: [keyword] };
     expectRejectedAt(modelOutputSchema, output, ["keywords", 0]);
+  });
+
+  it("odrzuca null zamiast pustej listy", () => {
+    const valid = validOutput();
+    const output = { ...valid, entities: { ...valid.entities, people: null } };
+    expectRejectedAt(modelOutputSchema, output, ["entities", "people"]);
+  });
+
+  it("odrzuca kwotę zapisaną jako tekst", () => {
+    const output = {
+      ...validOutput(),
+      amounts: [{ value: "12500", currency: "PLN", context: "wynagrodzenie" }],
+    };
+    expectRejectedAt(modelOutputSchema, output, ["amounts", 0, "value"]);
   });
 });
 
-describe("modelOutputSchema: zgodność z modelem", () => {
+describe("modelOutputSchema: kształt dla modelu", () => {
   it("nie prosi modelu o fileName i pages", () => {
     expect(Object.keys(modelOutputSchema.shape.document.shape)).toEqual([
       "language",
@@ -148,9 +167,10 @@ describe("modelOutputSchema: zgodność z modelem", () => {
     ]);
   });
 
-  it("zamienia się na JSON Schema", () => {
-    // Structured outputs dostają schemat jako JSON Schema. Konstrukcji bez odpowiednika
-    // w JSON Schema (np. .transform()) z.toJSONSchema nie przepuszcza.
+  it("nie zawiera konstrukcji bez odpowiednika w JSON Schema", () => {
+    // Structured outputs dostają schemat jako JSON Schema, a np. .transform() nie ma w nim
+    // odpowiednika i z.toJSONSchema rzuca błąd. To warunek konieczny, a nie pełna zgodność
+    // z tym, co SDK wysyła do API.
     expect(() => z.toJSONSchema(modelOutputSchema)).not.toThrow();
   });
 });
@@ -158,19 +178,42 @@ describe("modelOutputSchema: zgodność z modelem", () => {
 describe("toAnalysisResult i analysisResultSchema", () => {
   it("składa podsumowanie w jeden tekst i dodaje dane pliku", () => {
     const result = toAnalysisResult(validOutput(), file);
-    expect(result.summary).toBe(validOutput().summary.join(" "));
+    expect(result.summary).toBe(
+      "Umowa określa zasady serwisu urządzeń dla Przykład sp. z o.o. " +
+        "Wynagrodzenie za serwis wynosi 12 500 PLN. " +
+        "Płatność jest należna do 1 października 2026 r.",
+    );
     expect(result.document.fileName).toBe("umowa.pdf");
     expect(result.document.pages).toBe(4);
     expect(analysisResultSchema.safeParse(result).success).toBe(true);
   });
 
-  it("zachowuje kolejność kluczy z briefu", () => {
+  it("toAnalysisResult układa klucze w kolejności z briefu", () => {
     const result = toAnalysisResult(validOutput(), file);
     expect(Object.keys(result)).toEqual(briefKeys);
     expect(Object.keys(result.document)).toEqual(briefDocumentKeys);
+  });
 
+  it("schemat układa klucze w kolejności z briefu, nawet gdy przyszły pomieszane", () => {
     // Plik JSON do pobrania powstanie z wyniku sprawdzonego schematem na froncie.
-    const parsed = analysisResultSchema.parse(result);
+    const result = toAnalysisResult(validOutput(), file);
+    const shuffled = {
+      keywords: result.keywords,
+      dates: result.dates,
+      amounts: result.amounts,
+      entities: result.entities,
+      keyPoints: result.keyPoints,
+      summary: result.summary,
+      document: {
+        date: result.document.date,
+        title: result.document.title,
+        type: result.document.type,
+        language: result.document.language,
+        pages: result.document.pages,
+        fileName: result.document.fileName,
+      },
+    };
+    const parsed = analysisResultSchema.parse(shuffled);
     expect(Object.keys(parsed)).toEqual(briefKeys);
     expect(Object.keys(parsed.document)).toEqual(briefDocumentKeys);
   });
@@ -183,8 +226,9 @@ describe("toAnalysisResult i analysisResultSchema", () => {
   });
 
   it.each([0, -1, 1.5])("odrzuca liczbę stron %s", (pages) => {
-    const result = toAnalysisResult(validOutput(), { ...file, pages });
-    expectRejectedAt(analysisResultSchema, result, ["document", "pages"]);
+    const result = toAnalysisResult(validOutput(), file);
+    const output = { ...result, document: { ...result.document, pages } };
+    expectRejectedAt(analysisResultSchema, output, ["document", "pages"]);
   });
 
   it("odrzuca puste podsumowanie", () => {
