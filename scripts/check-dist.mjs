@@ -1,12 +1,16 @@
 // @ts-check
-// Sprawdza zbudowany frontend pod kątem pułapek GitHub Pages: każdy lokalny adres w index.html
-// zaczyna się od /pdf-insight/ i wskazuje na plik, który naprawdę jest w dist/.
-import { existsSync, readFileSync } from "node:fs";
+// Sprawdza zbudowany frontend pod kątem pułapek GitHub Pages:
+// - każdy lokalny adres w index.html zaczyna się od /pdf-insight/ i wskazuje na plik, który
+//   naprawdę jest w dist/;
+// - worker pdf.js jest w dist/assets, a skrypt aplikacji odwołuje się do niego pełnym adresem.
+// Użycie: node scripts/check-dist.mjs [katalog] — domyślnie dist (inny katalog do próbek).
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fail, pass } from "./lib/report.mjs";
 
 const BASE = "/pdf-insight/";
-const DIST = "dist";
+const DIST = process.argv[2] || "dist";
+const ASSETS = join(DIST, "assets");
 const indexPath = join(DIST, "index.html");
 
 function checkIndexHtml() {
@@ -42,4 +46,26 @@ function checkIndexHtml() {
   }
 }
 
+// Worker pdf.js trafia do dist/assets dzięki importowi `?url` w src/lib/pdfWorker.ts. Bez niego
+// albo ze złym adresem odczyt PDF w przeglądarce się nie uda, choć build przejdzie.
+function checkPdfWorker() {
+  const files = existsSync(ASSETS) ? readdirSync(ASSETS) : [];
+  const workers = files.filter((name) => /^pdf\.worker.*\.mjs$/.test(name));
+  if (workers.length !== 1) {
+    fail(`${ASSETS}: oczekiwano jednego pliku workera pdf.js, jest ${workers.length}`);
+    return;
+  }
+  const workerUrl = `${BASE}assets/${workers[0]}`;
+  const scripts = files.filter((name) => name.endsWith(".js"));
+  const referencing = scripts.filter((name) =>
+    readFileSync(join(ASSETS, name), "utf8").includes(workerUrl),
+  );
+  if (referencing.length === 0) {
+    fail(`${ASSETS}: żaden skrypt nie odwołuje się do workera ${workerUrl}`);
+    return;
+  }
+  pass(`worker pdf.js ${workerUrl} jest w ${ASSETS}, odwołuje się do niego ${referencing[0]}`);
+}
+
 checkIndexHtml();
+checkPdfWorker();

@@ -2,6 +2,8 @@
 // Test dymny po deployu, na prawdziwych adresach:
 // - demo na GitHub Pages odpowiada 200, ma oczekiwaną wersję (w CI: commit z GITHUB_SHA),
 //   a jego skrypt się ładuje;
+// - worker pdf.js, do którego odwołuje się skrypt, odpowiada 200 z typem JavaScript (inaczej
+//   przeglądarka go nie uruchomi i odczyt PDF się nie uda);
 // - backend jest dostępny bez logowania (adres produkcyjny Vercel, nie podgląd);
 // - CORS przepuszcza domenę demo i odrzuca obcą.
 // Nie wysyła tekstu do analizy, więc nie kosztuje nic w Claude API.
@@ -98,6 +100,33 @@ async function checkDemo() {
     return;
   }
   pass(`demo ${DEMO_URL}: 200, wersja ${build || "?"}, skrypt aplikacji się ładuje`);
+  await checkPdfWorker(asset.body, scriptUrl);
+}
+
+/**
+ * @param {string} script treść skryptu aplikacji
+ * @param {string} scriptUrl adres skryptu (do rozwiązania ścieżki workera)
+ */
+async function checkPdfWorker(script, scriptUrl) {
+  // Adres wstawia Vite z importu `?url` (src/lib/pdfWorker.ts), np. /pdf-insight/assets/pdf.worker.min-HASH.mjs.
+  const path = /[^"'`\s]*\/assets\/pdf\.worker[^"'`\s]*\.mjs/.exec(script)?.[0];
+  if (!path) {
+    fail(`demo: skrypt aplikacji nie odwołuje się do workera pdf.js`);
+    return;
+  }
+  const workerUrl = new URL(path, scriptUrl).href;
+  try {
+    const response = await request(workerUrl);
+    const type = response.headers.get("Content-Type") ?? "";
+    await response.arrayBuffer();
+    if (response.status !== 200 || !/javascript/.test(type)) {
+      fail(`demo: worker ${workerUrl}: status ${response.status}, Content-Type ${type || "brak"}`);
+      return;
+    }
+    pass(`demo: worker pdf.js się ładuje (${type})`);
+  } catch (error) {
+    fail(`demo: worker ${workerUrl}: ${error instanceof Error ? error.message : String(error)}`);
+  }
 }
 
 /** @param {string} origin */
