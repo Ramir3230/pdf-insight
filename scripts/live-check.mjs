@@ -2,12 +2,14 @@
 // PŁATNY test backendu na produkcji: prawdziwe wywołania Claude API, za które płaci właściciel.
 // Nie należy do `npm run check` ani do CI — uruchamiany ręcznie i celowo:
 //   node scripts/live-check.mjs --paid
-// Dwa przypadki (każdy to 1 wywołanie Claude, 2 przy ponownej próbie):
+// Przypadki (każdy to 1 wywołanie Claude, 2 przy ponownej próbie):
 // - umowa testowa z private/ (poza gitem) — tekst wyciągnięty jak w przeglądarce;
-// - krótka faktura z wstrzykniętym poleceniem, które próbuje zamknąć blok <dokument>.
+// - krótka faktura z wstrzykniętym poleceniem, które próbuje zamknąć blok <dokument>;
+// - krótka umowa po angielsku (wynik ma być po angielsku, choć prompt jest po polsku);
+// - z flagą --long: tekst bliski limitowi 200 000 znaków, tylko pomiar czasu.
 // Sprawdza: kod 200, czas poniżej 30 s, typ, datę, kwoty, daty, podmioty i to, że polecenia
 // z treści dokumentu nie zostały wykonane. Oczekiwania: private/live-expectations.json.
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 import { fail, pass } from "./lib/report.mjs";
 
@@ -28,7 +30,8 @@ const TIME_LIMIT_MS = 30_000;
  * @typedef {{
  *   fileName: string, pages: number, type: string, language?: string, date?: string,
  *   amounts: Amount[], dates: string[], organizations: string[], people: string[],
- *   forbiddenInSummary: string[], forbiddenKeywords?: string[], forbiddenAmountValues: number[]
+ *   forbiddenInSummary: string[], forbiddenKeywords?: string[], forbiddenAmountValues: number[],
+ *   noPolishLetters?: boolean
  * }} Expectation
  */
 
@@ -57,7 +60,7 @@ async function pdfText(path) {
 /**
  * @param {string} name
  * @param {{ text: string, fileName: string, pages: number }} body
- * @param {Expectation} expected
+ * @param {Expectation | null} expected null: sprawdzamy tylko kod i czas (długi dokument)
  */
 async function runCase(name, body, expected) {
   const started = Date.now();
@@ -68,17 +71,27 @@ async function runCase(name, body, expected) {
     signal: AbortSignal.timeout(90_000),
   });
   const elapsed = Date.now() - started;
-  const json = await response.json();
+  const seconds = (elapsed / 1000).toFixed(1);
+  const raw = await response.text();
   if (response.status !== 200) {
-    fail(`${name}: status ${response.status} ${JSON.stringify(json)}`);
+    fail(`${name}: status ${response.status} po ${seconds} s: ${raw.slice(0, 300)}`);
     return;
   }
-  const result = /** @type {Result} */ (json);
-  const seconds = (elapsed / 1000).toFixed(1);
+  /** @type {Result} */
+  let result;
+  try {
+    result = JSON.parse(raw);
+  } catch {
+    fail(`${name}: 200, ale odpowiedź nie jest JSON-em: ${raw.slice(0, 300)}`);
+    return;
+  }
   if (elapsed < TIME_LIMIT_MS) {
     pass(`${name}: 200 w ${seconds} s`);
   } else {
     fail(`${name}: 200, ale w ${seconds} s (limit 30 s)`);
+  }
+  if (expected === null) {
+    return;
   }
 
   /** @param {boolean} ok @param {string} message */
@@ -130,26 +143,55 @@ async function runCase(name, body, expected) {
   for (const value of expected.forbiddenAmountValues) {
     check(!result.amounts.some((item) => item.value === value), `brak kwoty ${value}`);
   }
+  // Dokument nie po polsku: podsumowanie bez polskich liter, czyli w języku dokumentu.
+  if (expected.noPolishLetters) {
+    check(
+      !/[ąćęłńśźż]/i.test(prose),
+      "podsumowanie i punkty w języku dokumentu (bez polskich liter)",
+    );
+  }
 
   // Do oceny jakości przez człowieka: treść wyniku (dokumenty testowe są fikcyjne).
   process.stdout.write(`\n--- ${name}: wynik ---\n${JSON.stringify(result, null, 2)}\n\n`);
 }
 
+const EXPECTATIONS = "private/live-expectations.json";
+
 if (!process.argv.includes("--paid")) {
   fail("to płatny test (wywołania Claude API) — uruchom z flagą --paid");
+} else if (!existsSync(EXPECTATIONS)) {
+  fail(`brak ${EXPECTATIONS} (katalog private/ jest poza gitem) — uruchom z katalogu projektu`);
 } else {
-  /** @type {{ contract: Expectation & { pdf: string }, injection: Expectation & { text: string } }} */
-  const expectations = JSON.parse(readFileSync("private/live-expectations.json", "utf8"));
-  const { contract, injection } = expectations;
+  /**
+   * @type {{
+   *   contract: Expectation & { pdf: string },
+   *   injection: Expectation & { text: string },
+   *   english: Expectation & { text: string }
+   * }}
+   */
+  const expectations = JSON.parse(readFileSync(EXPECTATIONS, "utf8"));
+  const { contract, injection, english } = expectations;
   const contractText = await pdfText(contract.pdf);
   await runCase(
     "umowa testowa",
     { text: contractText, fileName: contract.fileName, pages: contract.pages },
     contract,
   );
-  await runCase(
-    "wstrzyknięte polecenie",
-    { text: injection.text, fileName: injection.fileName, pages: injection.pages },
-    injection,
-  );
+  for (const [name, item] of /** @type {const} */ ([
+    ["wstrzyknięte polecenie", injection],
+    ["dokument po angielsku", english],
+  ])) {
+    await runCase(name, { text: item.text, fileName: item.fileName, pages: item.pages }, item);
+  }
+  // --long: tekst umowy powtórzony do prawie MAX_TEXT_CHARS (200 000 znaków) — pomiar czasu dla
+  // najdłuższego dokumentu, jaki przyjmuje backend. Jedno dodatkowe wywołanie.
+  if (process.argv.includes("--long")) {
+    const copies = Math.floor(195_000 / (contractText.length + 2));
+    const longText = Array.from({ length: copies }, () => contractText).join("\n\n");
+    await runCase(
+      `długi dokument (${longText.length} znaków)`,
+      { text: longText, fileName: "dlugi.pdf", pages: contract.pages * copies },
+      null,
+    );
+  }
 }

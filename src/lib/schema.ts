@@ -28,8 +28,9 @@ const languageCode = z.string().regex(/^[a-z]{2}$/);
 const currencyCode = z.string().regex(/^[A-Z]{3}$/);
 
 // Dane pliku, które zna przeglądarka: nazwa pliku i liczba stron z pdf.js. Modelu o nie nie pytamy.
+// Nazwa do 255 znaków — tyle pozwalają systemy plików; dłuższa to nie nazwa z dysku.
 export const sourceFileSchema = z.object({
-  fileName: nonEmptyText,
+  fileName: nonEmptyText.max(255),
   pages: z.number().int().positive(),
 });
 

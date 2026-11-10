@@ -276,4 +276,11 @@ describe("analyzeRequestSchema", () => {
     expectRejectedAt(analyzeRequestSchema, { ...request, fileName: "" }, ["fileName"]);
     expectRejectedAt(analyzeRequestSchema, { ...request, pages: 0 }, ["pages"]);
   });
+
+  it("przyjmuje nazwę pliku do 255 znaków i odrzuca dłuższą", () => {
+    expect(analyzeRequestSchema.safeParse({ ...request, fileName: "a".repeat(255) }).success).toBe(
+      true,
+    );
+    expectRejectedAt(analyzeRequestSchema, { ...request, fileName: "a".repeat(256) }, ["fileName"]);
+  });
 });
