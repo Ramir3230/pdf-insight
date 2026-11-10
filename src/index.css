@@ -37,3 +37,77 @@ h1 {
   font-size: 1.125rem;
   color: #374151;
 }
+
+.dropzone {
+  padding: 2rem 1rem;
+  border: 2px dashed #9ca3af;
+  border-radius: 0.75rem;
+  background-color: #ffffff;
+  text-align: center;
+}
+
+.dropzone p {
+  margin: 0 0 0.75rem;
+}
+
+.dropzone--active {
+  border-color: #1d4ed8;
+  background-color: #eff6ff;
+}
+
+/* Podczas przeciągania elementy w środku nie zgłaszają dragleave, więc ramka nie miga. */
+.dropzone--active * {
+  pointer-events: none;
+}
+
+.dropzone__hint {
+  font-weight: 600;
+}
+
+.dropzone__limits {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+  color: #4b5563;
+}
+
+/* Na ekranach dotykowych przeciągania plików nie ma — zostaje sam przycisk. */
+@media (pointer: coarse) {
+  .dropzone__hint {
+    display: none;
+  }
+}
+
+.button {
+  min-height: 2.75rem;
+  padding: 0.625rem 1.25rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background-color: #1d4ed8;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:hover {
+  background-color: #1e40af;
+}
+
+.button:focus-visible {
+  outline: 3px solid #1d4ed8;
+  outline-offset: 3px;
+}
+
+.status p {
+  margin: 1rem 0 0;
+  overflow-wrap: anywhere;
+}
+
+.error {
+  margin: 1rem 0 0;
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #b91c1c;
+  border-radius: 0.25rem;
+  background-color: #fef2f2;
+  color: #991b1b;
+}

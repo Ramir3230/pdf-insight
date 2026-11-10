@@ -32,6 +32,17 @@ export default defineConfig(
     settings: { react: { version: "detect" } },
     rules: {
       "react/no-danger": "error",
+      // Zestaw strict zabrania też obsługi przeciągania (onDrop, onDragOver) na zwykłym <div>.
+      // Strefa upuszczania pliku to dodatek dla myszy: z klawiatury i na telefonie działa
+      // prawdziwy <button> w środku strefy. Dlatego tylko dla tej reguły obowiązuje lista
+      // zdarzeń z zestawu recommended: kliknięcia i klawisze nadal są zakazane.
+      "jsx-a11y/no-static-element-interactions": [
+        "error",
+        {
+          allowExpressionValues: true,
+          handlers: ["onClick", "onMouseDown", "onMouseUp", "onKeyPress", "onKeyDown", "onKeyUp"],
+        },
+      ],
     },
   },
   {

@@ -1,3 +1,5 @@
 package-lock.json
 # Brief to źródło prawdy: formatowanie przykładu schematu zostaje takie, jak napisano.
 BRIEF.md
+# Lokalne ustawienia Claude Code: poza gitem (globalny ignore), nie są częścią projektu.
+.claude/settings.local.json
