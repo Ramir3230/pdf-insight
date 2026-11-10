@@ -5,8 +5,13 @@
 
 export type TestPage = readonly string[] | null;
 
-// W PDF nawiasy i backslash w tekście (...) trzeba poprzedzić backslashem.
+// W PDF nawiasy i backslash w tekście (...) trzeba poprzedzić backslashem. Znak spoza
+// drukowalnego ASCII (np. „ł”) zająłby kilka bajtów i rozjechał tabelę xref — a pdf.js
+// po cichu by ją odbudował i zamaskował zepsutą fiksturę. Dlatego błąd od razu.
 function escapePdfText(text: string): string {
+  if (!/^[\x20-\x7E]*$/.test(text)) {
+    throw new Error(`makeTestPdf: tylko drukowalne ASCII, a jest: ${text}`);
+  }
   return text.replace(/[\\()]/g, (char) => `\\${char}`);
 }
 

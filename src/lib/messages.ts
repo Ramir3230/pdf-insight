@@ -44,8 +44,8 @@ export const messages = {
     tooLarge: `Plik jest większy niż ${MAX_FILE_MB} MB. Wybierz mniejszy plik PDF.`,
     notPdf: "To nie jest plik PDF. Wybierz plik w formacie PDF.",
     noText:
-      "Ten PDF nie ma warstwy tekstowej — to prawdopodobnie skan. Skanów nie obsługujemy: " +
-      "wybierz PDF, w którym da się zaznaczyć tekst.",
+      "Ten PDF nie ma warstwy tekstowej albo ma jej bardzo mało — to prawdopodobnie skan. " +
+      "Skanów nie obsługujemy: wybierz PDF, w którym da się zaznaczyć tekst.",
     password: "Ten PDF jest chroniony hasłem. Zapisz go bez hasła i spróbuj ponownie.",
     damaged: "Plik PDF jest uszkodzony i nie da się go odczytać.",
     readFailed: "Nie udało się odczytać pliku. Spróbuj ponownie.",

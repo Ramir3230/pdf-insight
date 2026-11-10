@@ -1,5 +1,6 @@
-// Sprawdzenie pliku, zanim przeczyta go pdf.js. Kolejność ma znaczenie: rozmiar sprawdzamy przed
-// czytaniem treści, żeby nie wczytywać do pamięci pliku, który i tak odrzucimy.
+// Sprawdzenie pliku, zanim przeczyta go pdf.js. Czyta tylko pierwsze 1024 bajty (nagłówek);
+// cały plik czyta dopiero readPdf, po udanym sprawdzeniu. Kolejność sprawdzeń decyduje, który
+// komunikat zobaczy użytkownik, gdy plik ma kilka wad naraz.
 
 export const MAX_FILE_MB = 10;
 export const MAX_FILE_BYTES = MAX_FILE_MB * 1024 * 1024;

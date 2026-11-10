@@ -1,4 +1,4 @@
-import { getDocument } from "pdfjs-dist";
+import { InvalidPDFException, PasswordException, getDocument } from "pdfjs-dist";
 import type { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
 
 // Odczyt tekstu i liczby stron z PDF przez pdf.js. Plik nie opuszcza przeglądarki: dalej idzie
@@ -18,9 +18,16 @@ export class PdfTextError extends Error {
 
 export type PdfText = { text: string; pages: number };
 
-// Tekst strony z elementów pdf.js. hasEOL oznacza koniec linii. Spacje w linii zwijamy do jednej
-// i pomijamy puste linie: model dostaje mniej tokenów, a treść się nie zmienia.
-function pageText(items: readonly (TextItem | TextMarkedContent)[]): string {
+// Średnio mniej liter na stronę niż ten próg traktujemy jak skan. Sam test „jest choć jedna
+// litera” przepuściłby skan z pieczątką albo numerem strony („Docusign Envelope ID: …”), a taki
+// plik poszedłby do płatnej analizy AI z bezwartościowym wynikiem. Strona prawdziwego tekstu ma
+// setki liter.
+export const MIN_LETTERS_PER_PAGE = 50;
+
+// Tekst strony z elementów pdf.js. hasEOL oznacza koniec linii. Elementy mogą mieć spacje na
+// brzegach, a puste elementy z hasEOL dają puste linie — po sklejeniu zwijamy spacje do jednej
+// i pomijamy puste linie.
+export function pageText(items: readonly (TextItem | TextMarkedContent)[]): string {
   let raw = "";
   for (const item of items) {
     // TextMarkedContent to znaczniki struktury dokumentu, bez tekstu.
@@ -35,13 +42,13 @@ function pageText(items: readonly (TextItem | TextMarkedContent)[]): string {
     .join("\n");
 }
 
-// pdf.js zgłasza błędy jako obiekty z nazwą klasy w `name`.
+// Błędy z workera pdf.js trafiają do przeglądarki jako obiekty tych samych klas, więc wystarczy
+// instanceof.
 export function toPdfTextError(error: unknown): PdfTextError {
-  const name = error instanceof Error ? error.name : "";
-  if (name === "PasswordException") {
+  if (error instanceof PasswordException) {
     return new PdfTextError("password");
   }
-  if (name === "InvalidPDFException") {
+  if (error instanceof InvalidPDFException) {
     return new PdfTextError("damaged");
   }
   return new PdfTextError("readFailed");
@@ -59,8 +66,9 @@ export async function extractPdfText(data: Uint8Array): Promise<PdfText> {
     }
 
     const text = pages.filter((page) => page !== "").join("\n\n");
-    // Bez żadnej litery ani cyfry to skan albo same obrazy: bez OCR nie ma czego analizować.
-    if (!/[\p{L}\p{N}]/u.test(text)) {
+    // Bez OCR skan nie ma czego analizować (patrz MIN_LETTERS_PER_PAGE).
+    const letters = text.match(/\p{L}/gu)?.length ?? 0;
+    if (letters < MIN_LETTERS_PER_PAGE * pdf.numPages) {
       throw new PdfTextError("noText");
     }
     return { text, pages: pdf.numPages };

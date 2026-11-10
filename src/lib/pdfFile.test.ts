@@ -44,6 +44,11 @@ describe("checkPdfFiles", () => {
     });
   });
 
+  it("przy kilku wadach naraz zgłasza rozmiar przed brakiem nagłówka", async () => {
+    const bigNotPdf = new File([new Uint8Array(MAX_FILE_BYTES + 1)], "duzy.docx");
+    expect(await checkPdfFiles([bigNotPdf])).toEqual({ ok: false, code: "tooLarge" });
+  });
+
   it("odrzuca plik bez nagłówka PDF, nawet z nazwą .pdf i typem application/pdf", async () => {
     const fake = new File(["To jest zwykły tekst."], "faktura.pdf", { type: "application/pdf" });
     expect(await checkPdfFiles([fake])).toEqual({ ok: false, code: "notPdf" });
