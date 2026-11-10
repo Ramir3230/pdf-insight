@@ -15,7 +15,17 @@ export default defineConfig({
   // GitHub Pages serwuje projekt pod https://ramir3230.github.io/pdf-insight/
   base: "/pdf-insight/",
   plugins: [react(), buildIdPlugin],
+  build: {
+    // Bundle to ok. 670 kB (ok. 205 kB gzip), z czego ok. 450 kB to pdf.js. Domyślny próg
+    // ostrzeżenia to 500 kB. Leniwe ładowanie pdf.js tylko przesunęłoby to samo pobieranie
+    // o kilka sekund — pierwszą rzeczą na stronie jest wybór PDF — a wymagałoby przekazywania
+    // loadera pdf.js przez kilka modułów. Próg z zapasem na interfejs wyników.
+    chunkSizeWarningLimit: 800,
+  },
   test: {
     include: ["src/**/*.test.ts", "server/**/*.test.ts"],
+    // Testy działają w Node, a tam pdf.js wymaga wersji „legacy” (główna jest dla przeglądarek).
+    // Tylko w testach; aplikacja w przeglądarce używa głównej wersji.
+    alias: [{ find: /^pdfjs-dist$/, replacement: "pdfjs-dist/legacy/build/pdf.mjs" }],
   },
 });
