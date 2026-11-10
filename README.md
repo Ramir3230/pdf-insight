@@ -80,6 +80,11 @@ Vitest, build, a potem skrypty z `scripts/`:
   pliki w UTF-16 też są sprawdzane. `src/` i `dist/` nie odwołują się do zmiennej z kluczem;
   `.env.example` bez wartości klucza. Znalezionej wartości nie drukuje.
 - `check-readme-deps.mjs` — każda zależność z `package.json` jest opisana niżej.
+- `live-check.mjs` — **płatny**, poza `check` i CI, uruchamiany ręcznie z flagą `--paid`:
+  prawdziwe wywołania produkcyjnego backendu na umowie testowej i na fakturze z wstrzykniętym
+  poleceniem. Sprawdza kod 200, czas poniżej 30 s, typ, datę, kwoty, daty, podmioty i to, że
+  polecenia z treści dokumentu nie zostały wykonane. Oczekiwania i PDF testowy są w `private/`
+  (poza gitem), więc w świeżym klonie skrypt nie zadziała.
 - `check-invisible.mjs` — żaden plik tekstowy repozytorium (także jeszcze niedodany do gita)
   nie zawiera niewidocznych znaków: twardej spacji, spacji typograficznych, znaków o zerowej
   szerokości, BOM.
