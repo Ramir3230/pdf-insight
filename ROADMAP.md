@@ -71,8 +71,9 @@ tymczasowym sesji: bez zmian w systemie, bez instalacji globalnych.
       (okno nie zwęża się do 360 — iframe o szerokości 360).
       Plan z 11.11 (zaakceptowany): `src/lib/pdfFile.ts` — kolejno: jeden plik, niepusty,
       do 10 MB (przed czytaniem), sygnatura `%PDF-` w pierwszych 1024 bajtach (PDF poznajemy po
-      treści, nie po nazwie i MIME). `src/lib/pdfText.ts` — `pdfjs-dist`, `isEvalSupported:
-      false`, tekst stronami (`hasEOL` → nowa linia, strony oddzielone pustą linią); błędy: skan
+      treści, nie po nazwie i MIME). `src/lib/pdfText.ts` — `pdfjs-dist`,
+      `isEvalSupported: false`, tekst stronami (`hasEOL` → nowa linia, strony oddzielone pustą
+      linią); błędy: skan
       (brak liter i cyfr `\p{L}\p{N}`), hasło, uszkodzony plik. `src/lib/pdfWorker.ts` — worker
       przez `?url`, import w `main.tsx`. Fikstury PDF generowane w kodzie testu (bez binarnych
       plików). `src/components/PdfDrop.tsx`: strefa upuszczania + prawdziwy `<button>` z ukrytym
