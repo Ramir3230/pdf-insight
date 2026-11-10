@@ -19,8 +19,20 @@ Demo: https://ramir3230.github.io/pdf-insight/
     błędów, `pdfWorker.ts` podpina worker pdf.js z `dist/assets`. Testy używają małych plików
     PDF budowanych w kodzie (`src/lib/testing/makeTestPdf.ts`), bez binarnych fikstur.
 - `api/analyze.ts` — funkcja Vercel, jedyny punkt wejścia backendu. Tylko odczyt ustawień.
-- `server/` — logika backendu (CORS, obsługa żądania), testowana bez sieci. Poza `api/`, bo
-  Vercel zamienia każdy plik w `api/` w osobną funkcję.
+- `server/` — logika backendu, testowana bez sieci. Poza `api/`, bo Vercel zamienia każdy plik
+  w `api/` w osobną funkcję.
+  - `analyzeHandler.ts` — żądanie po kolei: CORS (tylko domena demo) → metoda → rozmiar body
+    (413) → JSON i schemat `analyzeRequestSchema` (400, za długi tekst 413) → limit żądań na IP
+    (429) → analiza. Złe żądania odpadają, zanim cokolwiek trafi do Claude (i zanim kosztuje).
+  - `analyze.ts` — zasada briefu: zła odpowiedź AI (albo przejściowy błąd API) → dokładnie jedna
+    ponowna próba, potem błąd; odmowy modelu nie ponawiamy.
+  - `claude.ts` — jedno wywołanie Claude (`claude-opus-5-5`): structured outputs ze schematu Zod
+    (`betaZodOutputFormat(modelOutputSchema)` — SDK sprawdza odpowiedź tym samym schematem),
+    jawny `effort`, serwerowy fallback przy odmowie modelu, limit czasu jednej próby.
+  - `prompt.ts` — prompt systemowy (zasady pól, „nie zgadujesz”) i tekst dokumentu w osobnym
+    bloku `<dokument>` jako dane; znaczniki bloku w treści są neutralizowane, więc tekst nie
+    „wyjdzie” z bloku. Nazwa pliku nie trafia do modelu.
+  - `rateLimit.ts` — limit analiz na adres IP (10 na 10 minut).
 - `scripts/` — kontrole uruchamiane w `npm run check` i w CI (opis niżej).
 
 Frontend i backend deployują się osobno:
@@ -47,7 +59,13 @@ npm run dev      # serwer deweloperski Vite
 npm run check    # kontrole z CI (CI dodatkowo uruchamia npm audit)
 ```
 
-Zmienne środowiskowe — w `.env.example` (bez wartości).
+Zmienne środowiskowe — w `.env.example` (bez wartości):
+
+- `ANTHROPIC_API_KEY` — klucz Claude API, tylko w zmiennych środowiskowych Vercel (Production,
+  sensitive). Wpisuje go właściciel komendą `vercel env add`; nie ma go w repozytorium ani we
+  frontendzie. Bez niego backend odpowiada 500 `not_configured`.
+- `ALLOWED_ORIGIN` — domena, z której backend przyjmuje żądania (domyślnie domena demo).
+- `VITE_API_URL` — adres backendu dla frontendu, zmienna repozytorium w GitHub Actions.
 
 ## Kontrole
 
@@ -79,7 +97,8 @@ CI (`.github/workflows/ci.yml`) na każdy push: `npm audit --audit-level=high`, 
 na `main` dodatkowo deploy na GitHub Pages i test dymny `scripts/smoke.mjs`: demo odpowiada 200
 i podaje wersję z właśnie zbudowanego commita, worker pdf.js odpowiada 200 z typem JavaScript
 (sam status nie wystarcza: serwer może na brakujący plik oddać stronę HTML z kodem 200),
-backend działa bez logowania, CORS przepuszcza domenę demo i odrzuca obcą.
+backend działa bez logowania i odrzuca puste żądanie kodem 400 (bez wywołania Claude, więc test
+nic nie kosztuje), CORS przepuszcza domenę demo i odrzuca obcą.
 
 ## Zależności
 
@@ -90,6 +109,7 @@ Każda zależność ma powód. Bez zależności „na zapas”.
 | `react`, `react-dom`               | Interfejs (wymóg: React 18+)                                                 |
 | `zod`                              | Schemat wyniku: walidacja na backendzie i froncie, structured outputs Claude |
 | `pdfjs-dist`                       | pdf.js (Mozilla): tekst i liczba stron z PDF w przeglądarce, bez serwera     |
+| `@anthropic-ai/sdk`                | Oficjalne SDK Claude API na backendzie: structured outputs ze schematu Zod   |
 | `vite`                             | Serwer deweloperski i build frontendu                                        |
 | `@vitejs/plugin-react`             | Obsługa React i JSX w Vite                                                   |
 | `typescript`                       | TypeScript `strict`. Wersja 6.0: `typescript-eslint` nie obsługuje jeszcze 7 |
@@ -104,6 +124,12 @@ Każda zależność ma powód. Bez zależności „na zapas”.
 | `vitest`                           | Testy jednostkowe                                                            |
 
 ## Znane ograniczenia
+
+- Tekst dokumentu do 200 000 znaków (ok. 60–70 tys. tokenów); dłuższy backend odrzuca
+  z komunikatem. Dzielenia długich dokumentów na fragmenty (F-08) nie ma.
+- Limit żądań (10 analiz na 10 minut z jednego IP) jest w pamięci funkcji Vercel: znika przy
+  zimnym starcie, a równoległe instancje liczą osobno. To ochrona przed prostym nadużyciem;
+  twardą granicą kosztów jest limit wydatków ustawiony na kluczu API.
 
 - Skany i PDF bez warstwy tekstowej nie są obsługiwane (brak OCR) — użytkownik dostaje
   komunikat. Za skan uznajemy też PDF ze średnio mniej niż 50 literami na stronę (np. skan

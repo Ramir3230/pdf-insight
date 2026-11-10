@@ -114,6 +114,23 @@ ANTHROPIC_API_KEY` wpisuje sam — agent nie widzi wartości.
       to przyjmuje; nazwa pliku i liczba stron z żądania sprawdzane `sourceFileSchema` (400).
       W prompcie: daty bez dnia pomijać, kwota bez waluty → `currency: null`, krótki dokument —
       minimum 3 zdań i 3 punktów bez dopisywania faktów.
+      Plan z 11.11 (noc, z planu zaakceptowanego 10.11): `server/claude.ts` — wywołanie SDK
+      (`client.beta.messages.parse`, `betaZodOutputFormat(modelOutputSchema)`, beta
+      `server-side-fallback-2026-07-01` + `fallbacks: "default"`, jawne `effort`, `maxRetries: 0`,
+      limit czasu); zwraca odpowiedź albo „zła odpowiedź” (parse rzuca `AnthropicError`, który nie
+      jest `APIError`) / „odmowa” (`stop_reason: "refusal"`). `server/prompt.ts` — prompt
+      systemowy po polsku i blok `<dokument>` z tekstem (znaczniki w treści neutralizowane);
+      nazwa pliku nie trafia do modelu (dane użytkownika = możliwa wstrzyknięta instrukcja).
+      `server/analyze.ts` — dokładnie jedna ponowna próba przy złej odpowiedzi lub błędzie
+      przejściowym API, bez ponowienia przy odmowie; składa wynik `toAnalysisResult`.
+      `server/rateLimit.ts` — limit w pamięci na IP (`x-real-ip`/`x-forwarded-for`), liczony
+      tylko dla żądań, które idą do Claude. `src/lib/schema.ts` — `analyzeRequestSchema`
+      (tekst do `MAX_TEXT_CHARS` = 200 000 znaków, wspólny z frontem). Handler: origin → OPTIONS
+      → metoda → rozmiar body (413) → JSON i schemat (400; za długi tekst 413) → limit (429) →
+      analiza (200 / 422 odmowa / 502 zła odpowiedź / 503 API niedostępne / 500 brak klucza).
+      Testy SDK bez sieci: podstawiony `fetch` w kliencie Anthropic — sprawdza body żądania
+      i parsowanie prawdziwym SDK. `scripts/live-check.mjs` (płatny, poza `check`): umowa
+      testowa + tekst z wstrzykniętym poleceniem, oczekiwania w `private/`.
 - [ ] **5. Interfejs** (F-05, F-06) — stan pusty, ładowanie, błąd z ponowieniem; podsumowanie,
       kluczowe punkty, podmioty, kwoty, daty, słowa kluczowe; podgląd i pobranie JSON; informacja,
       że tekst trafia do API AI; od 360 px, klawiatura, kontrast.
