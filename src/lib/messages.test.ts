@@ -16,7 +16,7 @@ describe("countLabel", () => {
 
   it("grupuje cyfry dużych liczb po polsku", () => {
     // Separatorem tysięcy w pl-PL jest twarda spacja (U+00A0).
-    expect(countLabel(12345, PAGES)).toBe("12 345 stron");
+    expect(countLabel(12345, PAGES)).toBe("12\u00a0345 stron");
   });
 });
 

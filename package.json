@@ -18,7 +18,8 @@
     "check:dist": "node scripts/check-dist.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "check:readme": "node scripts/check-readme-deps.mjs",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && npm run check:dist && npm run check:secrets && npm run check:readme",
+    "check:invisible": "node scripts/check-invisible.mjs",
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test && npm run build && npm run check:dist && npm run check:secrets && npm run check:readme && npm run check:invisible",
     "smoke": "node scripts/smoke.mjs",
     "deploy:api": "node scripts/deploy-api.mjs"
   },

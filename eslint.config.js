@@ -19,6 +19,13 @@ export default defineConfig(
       "no-undef": "off",
       "no-console": "error",
       "@typescript-eslint/no-explicit-any": "error",
+      // Niewidoczne spacje (np. twarda spacja U+00A0, znak o zerowej szerokości) także
+      // w napisach, szablonach, wyrażeniach regularnych i komentarzach: w kodzie mają być
+      // zapisane jako \u00a0 itd. Narzędzie agenta raz wpisało taki znak dosłownie.
+      "no-irregular-whitespace": [
+        "error",
+        { skipStrings: false, skipTemplates: false, skipRegExps: false, skipComments: false },
+      ],
     },
   },
   {
@@ -32,10 +39,15 @@ export default defineConfig(
     settings: { react: { version: "detect" } },
     rules: {
       "react/no-danger": "error",
-      // Zestaw strict zabrania też obsługi przeciągania (onDrop, onDragOver) na zwykłym <div>.
-      // Strefa upuszczania pliku to dodatek dla myszy: z klawiatury i na telefonie działa
-      // prawdziwy <button> w środku strefy. Dlatego tylko dla tej reguły obowiązuje lista
-      // zdarzeń z zestawu recommended: kliknięcia i klawisze nadal są zakazane.
+    },
+  },
+  {
+    // Zestaw strict zabrania też obsługi przeciągania (onDrop, onDragOver) na zwykłym <div>.
+    // Strefa upuszczania pliku to dodatek dla myszy: z klawiatury i na telefonie działa
+    // prawdziwy <button> w środku strefy. Dlatego tylko w tym pliku i tylko dla tej reguły
+    // obowiązuje lista zdarzeń z zestawu recommended: kliknięcia i klawisze nadal są zakazane.
+    files: ["src/components/PdfDrop.tsx"],
+    rules: {
       "jsx-a11y/no-static-element-interactions": [
         "error",
         {
