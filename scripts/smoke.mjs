@@ -39,19 +39,23 @@ function request(url, init = {}) {
 /**
  * Powtarza zapytanie, dopóki `isReady` nie zwróci true. GitHub Pages potrzebuje chwili, zanim
  * nowa wersja trafi na CDN, a pojedynczy błąd sieci nie powinien oblewać testu.
- * Zwraca ostatnią odpowiedź (z treścią) albo opis ostatniego błędu.
+ * Zwraca ostatnią odpowiedź (z treścią i typem) albo opis ostatniego błędu.
  * @param {string} url
- * @param {(status: number, body: string) => boolean} isReady
- * @returns {Promise<{ status: number, body: string } | { error: string }>}
+ * @param {(status: number, body: string, type: string) => boolean} isReady
+ * @returns {Promise<{ status: number, body: string, type: string } | { error: string }>}
  */
 async function fetchUntil(url, isReady) {
-  /** @type {{ status: number, body: string } | { error: string }} */
+  /** @type {{ status: number, body: string, type: string } | { error: string }} */
   let last = { error: "brak odpowiedzi" };
   for (let attempt = 1; attempt <= ATTEMPTS; attempt++) {
     try {
       const response = await request(url);
-      last = { status: response.status, body: await response.text() };
-      if (isReady(last.status, last.body)) {
+      last = {
+        status: response.status,
+        body: await response.text(),
+        type: response.headers.get("Content-Type") ?? "",
+      };
+      if (isReady(last.status, last.body, last.type)) {
         return last;
       }
     } catch (error) {
@@ -115,17 +119,18 @@ async function checkPdfWorker(script, scriptUrl) {
     return;
   }
   const workerUrl = new URL(path, scriptUrl).href;
-  try {
-    const response = await request(workerUrl);
-    const type = response.headers.get("Content-Type") ?? "";
-    await response.arrayBuffer();
-    if (response.status !== 200 || !/javascript/.test(type)) {
-      fail(`demo: worker ${workerUrl}: status ${response.status}, Content-Type ${type || "brak"}`);
-      return;
-    }
-    pass(`demo: worker pdf.js się ładuje (${type})`);
-  } catch (error) {
-    fail(`demo: worker ${workerUrl}: ${error instanceof Error ? error.message : String(error)}`);
+  const worker = await fetchUntil(
+    workerUrl,
+    (status, _body, type) => status === 200 && /javascript/.test(type),
+  );
+  if ("error" in worker) {
+    fail(`demo: worker ${workerUrl}: ${worker.error}`);
+  } else if (worker.status !== 200 || !/javascript/.test(worker.type)) {
+    fail(
+      `demo: worker ${workerUrl}: status ${worker.status}, Content-Type ${worker.type || "brak"}`,
+    );
+  } else {
+    pass(`demo: worker pdf.js się ładuje (${worker.type})`);
   }
 }
 
