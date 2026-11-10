@@ -1,0 +1,19 @@
+node_modules/
+dist/
+coverage/
+.vercel/
+*.log
+*.tsbuildinfo
+
+# Sekrety: .env nigdy w repo, wyjątek — .env.example bez wartości
+.env
+.env.*
+!.env.example
+
+# Oryginał briefu i PDF testowy od rekrutera — tylko lokalnie
+private/
+
+# Edytor i system
+.vscode/
+.DS_Store
+Thumbs.db
