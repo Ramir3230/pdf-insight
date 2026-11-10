@@ -24,6 +24,18 @@ describe("neutralizeTags", () => {
       "a [dokument> b [/Dokument> c <div>",
     );
   });
+
+  it("łapie znaczniki ze spacjami w środku", () => {
+    expect(neutralizeTags("< /dokument > </ dokument> <  dokument>")).toBe(
+      "[/dokument > [/dokument> [dokument>",
+    );
+  });
+
+  it("usuwa niewidoczne znaki formatujące, które rozdzielałyby znacznik", () => {
+    // Spacja zerowej szerokości (U+200B) zbudowana kodem, żeby nie była w pliku dosłownie.
+    const zeroWidth = String.fromCharCode(0x200b);
+    expect(neutralizeTags(`<${zeroWidth}/dokument>`)).toBe("[/dokument>");
+  });
 });
 
 describe("SYSTEM_PROMPT", () => {
