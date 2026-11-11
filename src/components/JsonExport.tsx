@@ -14,7 +14,9 @@ export function JsonExport({ result }: { result: AnalysisResult }) {
     link.href = url;
     link.download = jsonFileName(result.document.fileName);
     link.click();
-    URL.revokeObjectURL(url);
+    // Adres zwalniamy z opóźnieniem: Safari i starsze Firefoxy zaczynają pobieranie
+    // asynchronicznie i przy natychmiastowym zwolnieniu nic by nie pobrały.
+    setTimeout(() => URL.revokeObjectURL(url), 10_000);
   }
 
   return (

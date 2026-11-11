@@ -237,9 +237,11 @@ h1 {
   padding-left: 1.25rem;
 }
 
-.result__none {
+.result__none,
+.result__meta .result__none {
   color: #4b5563;
   font-style: italic;
+  font-weight: 400;
 }
 
 /* Kwota albo data i jej kontekst: wartość wyróżniona, opis obok (na wąskim ekranie pod spodem). */

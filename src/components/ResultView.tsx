@@ -6,7 +6,7 @@ import { JsonExport } from "./JsonExport";
 
 type ResultViewProps = {
   result: AnalysisResult;
-  // Czas od wgrania pliku do wyniku, w sekundach.
+  // Czas w sekundach od wgrania pliku (albo od kliknięcia „Spróbuj ponownie”) do wyniku.
   seconds: number;
 };
 
@@ -31,6 +31,9 @@ function Section({
 export function ResultView({ result, seconds }: ResultViewProps) {
   const headingRef = useRef<HTMLHeadingElement>(null);
   const doc = result.document;
+  // Teksty z dokumentu (podsumowanie, punkty, nazwy, konteksty) są w jego języku — atrybut lang
+  // tylko na nich, żeby czytnik ekranu wymówił je właściwie, a polski interfejs — po polsku.
+  const lang = doc.language;
 
   // Po pojawieniu się wyniku fokus przechodzi na jego nagłówek: czytnik ekranu go ogłosi,
   // a klawiatura zaczyna od wyniku, a nie od góry strony.
@@ -40,7 +43,12 @@ export function ResultView({ result, seconds }: ResultViewProps) {
 
   return (
     <article className="result">
-      <h2 ref={headingRef} tabIndex={-1} className="result__title" lang={doc.language}>
+      <h2
+        ref={headingRef}
+        tabIndex={-1}
+        className="result__title"
+        lang={doc.title === null ? undefined : lang}
+      >
         {doc.title ?? messages.result.untitled}
       </h2>
       <dl className="result__meta">
@@ -50,7 +58,11 @@ export function ResultView({ result, seconds }: ResultViewProps) {
         </div>
         <div>
           <dt>{messages.result.date}</dt>
-          <dd>{doc.date ? formatDate(doc.date) : messages.result.none}</dd>
+          {doc.date ? (
+            <dd>{formatDate(doc.date)}</dd>
+          ) : (
+            <dd className="result__none">{messages.result.none}</dd>
+          )}
         </div>
         <div>
           <dt>{messages.result.language}</dt>
@@ -58,78 +70,75 @@ export function ResultView({ result, seconds }: ResultViewProps) {
         </div>
         <div>
           <dt>{messages.result.file}</dt>
-          <dd className="result__file">
+          <dd>
             {doc.fileName}, {messages.pagesLabel(doc.pages)}
           </dd>
         </div>
       </dl>
       <p className="result__elapsed">{messages.result.elapsed(seconds)}</p>
 
-      {/* Treść jest w języku dokumentu: lang pozwala czytnikowi ekranu ją dobrze wymówić. */}
-      <div lang={doc.language}>
-        <Section title={messages.result.summary} isEmpty={false}>
-          <p>{result.summary}</p>
-        </Section>
+      <Section title={messages.result.summary} isEmpty={false}>
+        <p lang={lang}>{result.summary}</p>
+      </Section>
 
-        <Section title={messages.result.keyPoints} isEmpty={result.keyPoints.length === 0}>
-          <ul>
-            {result.keyPoints.map((point, index) => (
-              <li key={index}>{point}</li>
-            ))}
-          </ul>
-        </Section>
+      <Section title={messages.result.keyPoints} isEmpty={result.keyPoints.length === 0}>
+        <ul lang={lang}>
+          {result.keyPoints.map((point, index) => (
+            <li key={index}>{point}</li>
+          ))}
+        </ul>
+      </Section>
 
-        <Section title={messages.result.amounts} isEmpty={result.amounts.length === 0}>
-          <ul className="result__pairs">
-            {result.amounts.map((amount, index) => (
-              <li key={index}>
-                <span className="result__value">{formatAmount(amount.value, amount.currency)}</span>
-                <span>{amount.context}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
+      <Section title={messages.result.amounts} isEmpty={result.amounts.length === 0}>
+        <ul className="result__pairs">
+          {result.amounts.map((amount, index) => (
+            <li key={index}>
+              <span className="result__value">{formatAmount(amount.value, amount.currency)}</span>
+              <span lang={lang}>{amount.context}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-        <Section title={messages.result.dates} isEmpty={result.dates.length === 0}>
-          <ul className="result__pairs">
-            {result.dates.map((entry, index) => (
-              <li key={index}>
-                <span className="result__value">
-                  <time dateTime={entry.date}>{formatDate(entry.date)}</time>
-                </span>
-                <span>{entry.context}</span>
-              </li>
-            ))}
-          </ul>
-        </Section>
+      <Section title={messages.result.dates} isEmpty={result.dates.length === 0}>
+        <ul className="result__pairs">
+          {result.dates.map((entry, index) => (
+            <li key={index}>
+              <span className="result__value">
+                <time dateTime={entry.date}>{formatDate(entry.date)}</time>
+              </span>
+              <span lang={lang}>{entry.context}</span>
+            </li>
+          ))}
+        </ul>
+      </Section>
 
-        <Section
-          title={messages.result.organizations}
-          isEmpty={result.entities.organizations.length === 0}
-        >
-          <ul>
-            {result.entities.organizations.map((name, index) => (
-              <li key={index}>{name}</li>
-            ))}
-          </ul>
-        </Section>
+      <Section
+        title={messages.result.organizations}
+        isEmpty={result.entities.organizations.length === 0}
+      >
+        <ul lang={lang}>
+          {result.entities.organizations.map((name, index) => (
+            <li key={index}>{name}</li>
+          ))}
+        </ul>
+      </Section>
 
-        <Section title={messages.result.people} isEmpty={result.entities.people.length === 0}>
-          <ul>
-            {result.entities.people.map((name, index) => (
-              <li key={index}>{name}</li>
-            ))}
-          </ul>
-        </Section>
+      <Section title={messages.result.people} isEmpty={result.entities.people.length === 0}>
+        <ul lang={lang}>
+          {result.entities.people.map((name, index) => (
+            <li key={index}>{name}</li>
+          ))}
+        </ul>
+      </Section>
 
-        <Section title={messages.result.keywords} isEmpty={result.keywords.length === 0}>
-          <ul className="result__tags">
-            {result.keywords.map((keyword, index) => (
-              <li key={index}>{keyword}</li>
-            ))}
-          </ul>
-        </Section>
-      </div>
+      <Section title={messages.result.keywords} isEmpty={result.keywords.length === 0}>
+        <ul className="result__tags" lang={lang}>
+          {result.keywords.map((keyword, index) => (
+            <li key={index}>{keyword}</li>
+          ))}
+        </ul>
+      </Section>
 
       <JsonExport result={result} />
     </article>
