@@ -12,8 +12,11 @@ Demo: https://ramir3230.github.io/pdf-insight/
     analiza → wynik albo błąd z ponowieniem), `PdfDrop.tsx` (wgrywanie), `ResultView.tsx`
     (wynik: podsumowanie, punkty, kwoty, daty, podmioty, słowa kluczowe), `JsonExport.tsx`
     (podgląd i pobranie JSON — plik powstaje w przeglądarce).
-  - `src/api/analyzeClient.ts` — klient HTTP backendu: odpowiedź sprawdzana tym samym schematem
-    Zod co na backendzie, zanim trafi na ekran; każdy problem to kod błędu z komunikatem.
+  - `src/api/analyzeClient.ts` — klient HTTP backendu: odpowiedź sprawdzana schematem wyniku
+    końcowego `analysisResultSchema` (zbudowanym na `modelOutputSchema`, którym backend sprawdza
+    odpowiedź modelu), zanim trafi na ekran; każdy problem to kod błędu z komunikatem.
+    Ponowienie proponujemy tylko przy błędach przejściowych (sieć, limit żądań, chwilowa
+    niedostępność AI, zła odpowiedź AI).
   - `src/lib/format.ts` — kwoty, daty i nazwy języków po polsku (`Intl`), nazwa pliku JSON.
   - `src/lib/` — logika bez interfejsu; `src/lib/messages.ts` — wszystkie teksty interfejsu;
     `src/lib/schema.ts` — schemat wyniku (Zod), wspólny dla frontendu i backendu.
@@ -72,8 +75,10 @@ npm run check    # kontrole z CI (CI dodatkowo uruchamia npm audit)
 ```
 
 Analiza lokalnie: produkcyjny backend przyjmuje żądania tylko z domeny demo (CORS), więc
-z `localhost` odpowie błędem. Do pracy nad interfejsem wystarczy dowolny serwer zgodny
-z `analysisResultSchema` pod adresem z `VITE_API_URL` (np. `$env:VITE_API_URL = "…"; npm run dev`).
+z `localhost` odpowie błędem. Do pracy nad interfejsem wystarczy własny serwer pod adresem
+z `VITE_API_URL` (np. `$env:VITE_API_URL = "…"; npm run dev`), który odpowiada JSON-em
+zgodnym z `analysisResultSchema`, wysyła nagłówki CORS dla `localhost` i obsługuje zapytanie
+`OPTIONS` (przeglądarka wysyła je przed POST z JSON-em).
 
 Zmienne środowiskowe — w `.env.example` (bez wartości):
 

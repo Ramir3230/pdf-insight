@@ -21,6 +21,8 @@ describe("formatAmount", () => {
 });
 
 describe("formatDate", () => {
+  // Testy działają w strefie America/Los_Angeles (vite.config.ts), gdzie północ UTC to jeszcze
+  // poprzedni dzień — bez timeZone: "UTC" w formacie data przesunęłaby się o dzień.
   it("pokazuje datę ISO słownie po polsku, bez przesunięcia o dzień", () => {
     expect(formatDate("2026-03-12")).toBe("12 marca 2026");
     expect(formatDate("2028-12-31")).toBe("31 grudnia 2028");

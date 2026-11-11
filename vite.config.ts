@@ -28,6 +28,9 @@ export default defineConfig({
     // Podmienione funkcje (vi.spyOn, np. wyciszony console.error) wracają do oryginału po
     // każdym teście, żeby jeden test nie wpływał na następne.
     restoreMocks: true,
+    // Strefa na zachód od UTC: północ UTC to tam jeszcze poprzedni dzień, więc test formatDate
+    // wyłapie datę przesuniętą o dzień. W strefie UTC (CI) albo UTC+2 błąd byłby niewidoczny.
+    env: { TZ: "America/Los_Angeles" },
     // Testy działają w Node, a tam pdf.js wymaga wersji „legacy” (główna jest dla przeglądarek).
     // Tylko w testach; aplikacja w przeglądarce używa głównej wersji.
     alias: [{ find: /^pdfjs-dist$/, replacement: "pdfjs-dist/legacy/build/pdf.mjs" }],
