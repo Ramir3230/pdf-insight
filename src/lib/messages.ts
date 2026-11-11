@@ -72,8 +72,8 @@ export const messages = {
       `${MAX_TEXT_CHARS.toLocaleString("pl-PL")} znaków tekstu.`,
     network: "Brak połączenia z serwerem analizy. Sprawdź internet i spróbuj ponownie.",
     timeout:
-      "Analiza trwała zbyt długo — dokument może być za długi. Wybierz krótszy dokument albo " +
-      "spróbuj później.",
+      "Analiza trwała zbyt długo. Spróbuj ponownie — a jeśli to się powtórzy, wybierz krótszy " +
+      "dokument.",
     rate_limited: "Za dużo analiz w krótkim czasie. Spróbuj ponownie za kilka minut.",
     refused: "Model AI odmówił analizy tego dokumentu. Spróbuj z innym plikiem.",
     invalid_response:

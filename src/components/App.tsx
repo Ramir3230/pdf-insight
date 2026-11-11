@@ -15,11 +15,13 @@ type AppState =
   | { step: "analyzeError"; source: AnalyzeRequest; code: AnalyzeErrorCode }
   | { step: "done"; result: AnalysisResult; seconds: number };
 
-// Błędy przejściowe, po których ponowienie z tym samym tekstem ma sens. Przy pozostałych powtórka
-// skończyłaby się tak samo (za długi tekst albo czas, odmowa modelu, odrzucone żądanie, zła
-// konfiguracja, wynik niezgodny ze schematem) — trzeba wybrać inny plik albo odświeżyć stronę.
+// Błędy, po których ponowienie z tym samym tekstem ma sens. Przekroczony czas też: zwykły dokument
+// trwa ok. 16 s, więc 25 s to raczej chwilowe spowolnienie API niż za długi tekst (backend sam
+// go nie ponawia, decyduje użytkownik). Przy pozostałych powtórka skończyłaby się tak samo (za
+// długi tekst, odmowa modelu, odrzucone żądanie, zła konfiguracja, wynik niezgodny ze schematem).
 const RETRYABLE = new Set<AnalyzeErrorCode>([
   "network",
+  "timeout",
   "rate_limited",
   "invalid_response",
   "unavailable",
