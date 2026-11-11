@@ -90,7 +90,9 @@ Vitest, build, a potem skrypty z `scripts/`:
 
 - `check-dist.mjs` — każdy lokalny adres w `dist/index.html` zaczyna się od `/pdf-insight/`
   i wskazuje na istniejący plik; strona ma znacznik wersji `<meta name="build">`; worker pdf.js
-  jest w `dist/assets`, a skrypt aplikacji odwołuje się do niego pełnym adresem.
+  jest w `dist/assets`, a skrypt aplikacji odwołuje się do niego pełnym adresem; adres backendu
+  z `VITE_API_URL` jest w skrypcie i to adres produkcyjny, a nie adres deploymentu Vercel
+  (wymaga logowania). W CI zmienna jest obowiązkowa, lokalnie bez niej ten punkt jest pomijany.
 - `check-secrets.mjs` — brak klucza API Anthropic w plikach na dysku, w indeksie git, w całej
   historii git (zmiany, także z commitów merge, wiadomości commitów, opisy tagów) i w `dist/`;
   pliki w UTF-16 też są sprawdzane. `src/` i `dist/` nie odwołują się do zmiennej z kluczem;

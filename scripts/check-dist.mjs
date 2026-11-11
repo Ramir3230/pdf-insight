@@ -2,7 +2,10 @@
 // Sprawdza zbudowany frontend pod kątem pułapek GitHub Pages:
 // - każdy lokalny adres w index.html zaczyna się od /pdf-insight/ i wskazuje na plik, który
 //   naprawdę jest w dist/;
-// - worker pdf.js jest w dist/assets, a skrypt aplikacji odwołuje się do niego pełnym adresem.
+// - worker pdf.js jest w dist/assets, a skrypt aplikacji odwołuje się do niego pełnym adresem;
+// - adres backendu z VITE_API_URL jest w skrypcie aplikacji i to adres produkcyjny Vercel, a nie
+//   adres konkretnego deploymentu (podgląd wymaga logowania). W CI zmienna jest wymagana,
+//   lokalnie — gdy jej nie ma — ten punkt jest pomijany.
 // Użycie: node scripts/check-dist.mjs [katalog] — domyślnie dist (inny katalog do próbek).
 import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
@@ -67,5 +70,35 @@ function checkPdfWorker() {
   pass(`worker pdf.js ${workerUrl} jest w ${ASSETS}, odwołuje się do niego ${referencing[0]}`);
 }
 
+// Adres konkretnego deploymentu Vercel: <projekt>-<9 znaków hasha>-<zespół>.vercel.app.
+// Taki adres jest chroniony logowaniem, więc demo by z niego nie skorzystało.
+const DEPLOYMENT_URL = /^https:\/\/[a-z0-9-]+-[a-z0-9]{9}-[a-z0-9-]+\.vercel\.app\//;
+
+function checkApiUrl() {
+  const apiUrl = process.env.VITE_API_URL ?? "";
+  if (!apiUrl) {
+    if (process.env.CI) {
+      fail("VITE_API_URL nie jest ustawione w CI — frontend nie wiedziałby, gdzie jest backend");
+    } else {
+      pass("VITE_API_URL nie ustawione lokalnie — adres backendu w bundle nie jest sprawdzany");
+    }
+    return;
+  }
+  if (DEPLOYMENT_URL.test(apiUrl)) {
+    fail(`VITE_API_URL ${apiUrl} to adres deploymentu (wymaga logowania), a nie produkcyjny`);
+    return;
+  }
+  const files = existsSync(ASSETS) ? readdirSync(ASSETS) : [];
+  const inBundle = files
+    .filter((name) => name.endsWith(".js"))
+    .some((name) => readFileSync(join(ASSETS, name), "utf8").includes(apiUrl));
+  if (!inBundle) {
+    fail(`adresu backendu ${apiUrl} nie ma w skryptach ${ASSETS}`);
+    return;
+  }
+  pass(`adres backendu ${apiUrl} jest w bundle`);
+}
+
 checkIndexHtml();
 checkPdfWorker();
+checkApiUrl();
