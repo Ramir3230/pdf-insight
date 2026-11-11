@@ -143,12 +143,26 @@ ANTHROPIC_API_KEY` wpisuje sam — agent nie widzi wartości.
       (umowa powtórzona 9 razy) 18,2 s. Wszystkie kontrole zielone, polecenia z treści
       dokumentów niewykonane. Innych poziomów effort nie mierzyliśmy. Pierwszy test dymny po
       deployu oblał (najpewniej stara wersja pod adresem tuż po deployu) — teraz ponawia.
-- [ ] **5. Interfejs** (F-05, F-06) — stan pusty, ładowanie, błąd z ponowieniem; podsumowanie,
+- [x] **5. Interfejs** (F-05, F-06; 11.11, ok. 02:10) — stan pusty, ładowanie, błąd z ponowieniem; podsumowanie,
       kluczowe punkty, podmioty, kwoty, daty, słowa kluczowe; podgląd i pobranie JSON; informacja,
       że tekst trafia do API AI; od 360 px, klawiatura, kontrast.
       Ustalenia: odpowiedź backendu walidowana tym samym schematem przed wyświetleniem; lokalnie
       dane daje mock poza repozytorium (produkcyjny backend nie przepuszcza localhost);
       sprawdzenie w Chrome wszystkich stanów na 360 px i desktopie.
+      Po drodze: `src/api/analyzeClient.ts` (każdy problem to kod błędu; wynik sprawdzany
+      `analysisResultSchema`), `src/lib/format.ts` (kwoty, daty, języki po polsku przez `Intl`),
+      `ResultView.tsx`, `JsonExport.tsx` (plik powstaje w przeglądarce); czas od wgrania do wyniku
+      widoczny przy wyniku; fokus na nagłówku wyniku. Sprawdzone w przeglądarce na mocku
+      (`private/mock-api.mjs`, dane z płatnego przebiegu): wszystkie stany i kody błędów,
+      ponowienie, nowszy plik wypiera starszy przebieg, odpowiedź 200 niezgodna ze schematem nie
+      trafia na ekran, puste sekcje, 360 px w ramce; treść pobranego JSON przechwycona (pliku nie
+      zapisywaliśmy). Z recenzji: ponowienie tylko przy błędach przejściowych i fokus na
+      przycisku; `lang` tylko na tekstach dokumentu; zwolnienie adresu pliku po 10 s (Safari);
+      testy w strefie czasowej na zachód od UTC (test daty łapie przesunięcie o dzień); jawne
+      mapowanie kodów backendu; długa nazwa pliku skracana przed wysłaniem. Bez testów
+      automatycznych komponentów (nie ma jsdom) — maszyna stanów sprawdzona ręcznie w przeglądarce.
+      Przygotowane do bloku 6: `check-dist` sprawdza adres backendu w bundle (w CI obowiązkowy,
+      nie adres deploymentu).
 - [ ] **6. Demo od początku do końca** (F-07) — `VITE_API_URL` w Actions, merge do `main`, test
       w oknie prywatnym na PDF testowym i na własnym PDF: wynik w mniej niż 30 sekund.
       Ustalenia: przed merge'em lista tekstów interfejsu; `check-dist` sprawdza, że bundle

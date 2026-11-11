@@ -76,3 +76,12 @@ Format: **co poszło nie tak** → **reguła lub kontrola** (gdzie mieszka).
     i 10): „tekst nie wyjdzie z bloku `<dokument>`”, choć wzorzec łapał tylko dokładny znacznik.
     → Komentarz i README mówią, co kod robi („utrudnia”), a nie jaki ma być efekt; przy
     zabezpieczeniach wprost pisać, czego nie łapią.
+15. **Test, który przechodzi w złym środowisku** (blok 5, recenzent; powtórka punktu 6): test
+    „data bez przesunięcia o dzień” był zielony także bez `timeZone: "UTC"`, bo strefy agenta
+    (UTC+2) i CI (UTC) błędu nie pokazują. → Vitest działa w strefie `America/Los_Angeles`
+    (`vite.config.ts`); test sprawdzony mutacją.
+16. **Sprawdzenie w przeglądarce na nieistniejącym trybie mocka** (blok 5): agent przełączył mock
+    na tryb o złej nazwie, mock po cichu oddał zwykły wynik i jeden przypadek wyglądał na błąd
+    aplikacji (drugi raz — „sprawdzony” przypadek, którego w mocku nie było). Oba razy wyszło
+    przy analizie wyniku. → Przed sprawdzeniem stanu potwierdzić warunek wstępny (mock odpowiada
+    oczekiwanym kodem), a wynik, który nie pasuje, wyjaśnić, zanim pójdzie do raportu.

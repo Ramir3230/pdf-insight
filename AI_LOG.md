@@ -272,3 +272,27 @@ pomyliło”). Poza tym: przekroczony czas i trwałe błędy API nie są już po
 komunikaty, każdy wyjątek kończy się odpowiedzią z nagłówkami CORS, prompt doprecyzowany
 (język dokumentu, rodzaje dokumentów, wprost o brakujących danych), dodatkowe testy. Po
 poprawkach drugi płatny przebieg — wszystko zielone.
+
+### 11.11, ok. 01:45 — blok 5: interfejs
+
+Co powstało:
+
+- `src/api/analyzeClient.ts` — klient backendu: wynik sprawdzany schematem wyniku przed
+  wyświetleniem, każdy problem to kod błędu z polskim komunikatem;
+- `src/components/App.tsx` — kroki: plik → odczyt → analiza → wynik albo błąd; ponowienie
+  tylko przy błędach przejściowych; nowszy plik wypiera starszy przebieg;
+- `ResultView.tsx` — podsumowanie, punkty, kwoty, daty, organizacje, osoby, słowa kluczowe,
+  czas analizy; `JsonExport.tsx` — podgląd i pobranie JSON;
+- `src/lib/format.ts` — kwoty, daty i nazwy języków po polsku;
+- stan pusty z opisem wyniku i informacją, że tekst trafia do Claude API.
+
+Do sprawdzania w przeglądarce agent zrobił lokalny mock backendu poza repozytorium (produkcyjny
+backend nie przyjmuje żądań z `localhost`), z danymi z płatnego przebiegu. Sprawdzone: wszystkie
+stany i kody błędów na desktopie i w ramce 360 px, ponowienie, fokus, puste sekcje, treść
+pobieranego pliku. Dwa razy wynik w przeglądarce nie pasował — za każdym razem przyczyną był sam
+test (zła nazwa trybu mocka, brak trybu), a nie aplikacja; wyjaśnione przed raportem.
+
+Recenzent: bez blokerów. Najważniejsze: ponowienie proponowane także tam, gdzie nie pomoże
+(przekroczony czas, odrzucone żądanie); test daty, który nie łapał błędu w strefie UTC;
+atrybut `lang` obejmował też polski interfejs; natychmiastowe zwolnienie adresu pobieranego
+pliku (Safari może nic nie pobrać). Wszystko poprawione.
