@@ -54,6 +54,10 @@ describe("extractPdfText", () => {
     expect(await errorCodeOf(extractPdfText(makeTestPdf([null, null])))).toBe("noText");
   });
 
+  it("odrzuca PDF bez żadnej strony", async () => {
+    expect(await errorCodeOf(extractPdfText(makeTestPdf([])))).toBe("noText");
+  });
+
   it("odrzuca skan z pieczątką tekstową na każdej stronie", async () => {
     const stamp = ["Docusign Envelope ID: 3F2504E0-4F89-11D3-9A0C"];
     expect(await errorCodeOf(extractPdfText(makeTestPdf([stamp, stamp])))).toBe("noText");

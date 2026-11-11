@@ -1,8 +1,8 @@
 import { z } from "zod";
 import {
   MAX_FILE_NAME_CHARS,
-  MAX_TEXT_CHARS,
   analysisResultSchema,
+  analyzeRequestSchema,
   type AnalysisResult,
   type AnalyzeRequest,
 } from "../lib/schema";
@@ -60,19 +60,23 @@ export async function requestAnalysis(
   if (!apiUrl) {
     return { ok: false, code: "not_configured" };
   }
-  // Ten sam limit sprawdza backend; tu oszczędzamy wysyłki, która i tak zostałaby odrzucona.
-  if (request.text.trim().length > MAX_TEXT_CHARS) {
-    return { ok: false, code: "text_too_long" };
-  }
   // Backend przyjmuje nazwę pliku do 255 znaków; dłuższą (rzadkość) skracamy, zamiast odrzucać.
-  const fileName = request.fileName.slice(0, MAX_FILE_NAME_CHARS);
+  const prepared = { ...request, fileName: request.fileName.slice(0, MAX_FILE_NAME_CHARS) };
+  // Ten sam schemat sprawdza backend: nie wysyłamy żądania, które i tak zostałoby odrzucone.
+  const check = analyzeRequestSchema.safeParse(prepared);
+  if (!check.success) {
+    const textTooLong = check.error.issues.some(
+      (issue) => issue.path[0] === "text" && issue.code === "too_big",
+    );
+    return { ok: false, code: textTooLong ? "text_too_long" : "rejected" };
+  }
 
   let response: Response;
   try {
     response = await fetchImpl(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...request, fileName }),
+      body: JSON.stringify(prepared),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (error) {

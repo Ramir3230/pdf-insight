@@ -105,6 +105,15 @@ describe("requestAnalysis", () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it("żądanie, które backend by odrzucił (0 stron), → rejected bez wysyłki", async () => {
+    const fetch = respond(result);
+    expect(await requestAnalysis({ ...request, pages: 0 }, API_URL, fetch)).toEqual({
+      ok: false,
+      code: "rejected",
+    });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
   it("brak adresu backendu w buildzie → not_configured bez wysyłki", async () => {
     const fetch = respond(result);
     expect(await requestAnalysis(request, undefined, fetch)).toEqual({

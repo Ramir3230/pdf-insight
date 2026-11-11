@@ -67,8 +67,9 @@ export async function extractPdfText(data: Uint8Array): Promise<PdfText> {
 
     const text = pages.filter((page) => page !== "").join("\n\n");
     // Bez OCR skan nie ma czego analizować (patrz MIN_LETTERS_PER_PAGE).
+    // PDF bez stron (pdf.js go otwiera, numPages = 0) też nie ma czego analizować.
     const letters = text.match(/\p{L}/gu)?.length ?? 0;
-    if (letters < MIN_LETTERS_PER_PAGE * pdf.numPages) {
+    if (pdf.numPages === 0 || letters < MIN_LETTERS_PER_PAGE * pdf.numPages) {
       throw new PdfTextError("noText");
     }
     return { text, pages: pdf.numPages };
