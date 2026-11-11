@@ -10,7 +10,12 @@ z tłumaczeniem na polski.
   recenzja, wyjaśnienie, co powstało. Plan bloków powstał na modelu Claude Fable 5.2, od bloku 1
   pracuję na Claude Opus 5.5 (przełączyłem komendą `/model`).
 - **Agent recenzent `code-reviewer`** — przegląd kodu na koniec bloków; sam niczego nie poprawia.
-- **Claude API** (`claude-opus-5-5`) — w samej aplikacji: podsumowanie i dane JSON.
+- **Skill `claude-api`** w Claude Code — źródło nazw z SDK, modeli, cen i parametrów przed
+  napisaniem wywołania Claude (zamiast pamięci modelu).
+- **Claude in Chrome** (rozszerzenie przeglądarki) — agent sprawdzał interfejs w prawdziwej
+  przeglądarce: zrzuty ekranu, stany aplikacji, szerokość 360 px.
+- **Claude API** (`claude-opus-5-5`) — w samej aplikacji: podsumowanie i dane JSON; płatne
+  przebiegi kontrolne `scripts/live-check.mjs`.
 
 ## Kluczowe prompty
 
