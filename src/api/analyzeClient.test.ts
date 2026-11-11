@@ -27,16 +27,24 @@ function respond(body: unknown, status = 200) {
 }
 
 describe("requestAnalysis", () => {
-  it("wysyła POST z JSON-em i zwraca wynik sprawdzony schematem", async () => {
+  it("wysyła POST z JSON-em, limitem czasu i zwraca wynik sprawdzony schematem", async () => {
     const fetch = respond(result);
     expect(await requestAnalysis(request, API_URL, fetch)).toEqual({ ok: true, result });
     const [url, init] = fetch.mock.calls[0] ?? [];
     expect(url).toBe(API_URL);
     expect(init?.method).toBe("POST");
+    expect(init?.signal).toBeInstanceOf(AbortSignal);
     expect(JSON.parse(String(init?.body))).toEqual(request);
   });
 
-  it("odpowiedź 200 niezgodna ze schematem → bad_result, nic nie trafia na ekran", async () => {
+  it("skraca nazwę pliku dłuższą niż 255 znaków, zamiast dać się odrzucić", async () => {
+    const fetch = respond(result);
+    await requestAnalysis({ ...request, fileName: `${"a".repeat(300)}.pdf` }, API_URL, fetch);
+    const sent = JSON.parse(String(fetch.mock.calls[0]?.[1]?.body)) as { fileName: string };
+    expect(sent.fileName).toBe("a".repeat(255));
+  });
+
+  it("odpowiedź 200 niezgodna ze schematem → bad_result zamiast wyniku", async () => {
     const fetch = respond({ ...result, summary: 42 });
     expect(await requestAnalysis(request, API_URL, fetch)).toEqual({
       ok: false,
@@ -45,20 +53,23 @@ describe("requestAnalysis", () => {
   });
 
   it.each([
-    "rate_limited",
-    "refused",
-    "invalid_response",
-    "unavailable",
-    "misconfigured",
-    "timeout",
-    "text_too_long",
-  ])("błąd backendu %s → ten sam kod", async (code) => {
-    const fetch = respond({ error: { code, message: "..." } }, 503);
+    ["rate_limited", "rate_limited"],
+    ["refused", "refused"],
+    ["invalid_response", "invalid_response"],
+    ["unavailable", "unavailable"],
+    ["timeout", "timeout"],
+    ["misconfigured", "misconfigured"],
+    ["not_configured", "misconfigured"],
+    ["text_too_long", "text_too_long"],
+    ["payload_too_large", "text_too_long"],
+    ["invalid_request", "rejected"],
+  ])("błąd backendu %s → kod interfejsu %s", async (backendCode, code) => {
+    const fetch = respond({ error: { code: backendCode, message: "..." } }, 503);
     expect(await requestAnalysis(request, API_URL, fetch)).toEqual({ ok: false, code });
   });
 
   it("nieznany kod albo odpowiedź, która nie jest JSON-em → server", async () => {
-    const unknownCode = respond({ error: { code: "invalid_request", message: "..." } }, 400);
+    const unknownCode = respond({ error: { code: "internal_error", message: "..." } }, 500);
     expect(await requestAnalysis(request, API_URL, unknownCode)).toEqual({
       ok: false,
       code: "server",

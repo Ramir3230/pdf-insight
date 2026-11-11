@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  MAX_FILE_NAME_CHARS,
   MAX_TEXT_CHARS,
   analysisResultSchema,
   type AnalysisResult,
@@ -7,8 +8,9 @@ import {
 } from "../lib/schema";
 
 // Klient HTTP backendu. Nie rzuca wyjątków: każdy problem to kod błędu, który interfejs zamienia
-// na komunikat. Odpowiedź backendu sprawdza ten sam schemat Zod co backend — dopiero poprawny
-// wynik trafia na ekran i do pobranego pliku JSON.
+// na komunikat. Odpowiedź sprawdzamy schematem wyniku końcowego z src/lib/schema.ts
+// (analysisResultSchema — zbudowany na modelOutputSchema, którym backend sprawdza odpowiedź
+// modelu). Dopiero poprawny wynik trafia na ekran i do pobranego pliku JSON.
 
 export type AnalyzeErrorCode =
   // przed wysłaniem
@@ -23,6 +25,7 @@ export type AnalyzeErrorCode =
   | "invalid_response"
   | "unavailable"
   | "misconfigured"
+  | "rejected"
   | "bad_result"
   | "server";
 
@@ -32,21 +35,22 @@ export type AnalyzeResponse =
 // Dłużej nie ma sensu czekać: funkcja Vercel ma limit 60 s.
 const TIMEOUT_MS = 65_000;
 
-// Kody błędów backendu, które interfejs opisuje osobnym komunikatem. Inne (np. 400 przy
-// niezgodnych wersjach frontu i backendu) to ogólny błąd serwera.
-const KNOWN_BACKEND_CODES = [
-  "rate_limited",
-  "refused",
-  "invalid_response",
-  "unavailable",
-  "misconfigured",
-  "timeout",
-  "text_too_long",
-] as const;
+// Kod błędu z backendu (server/analyzeHandler.ts) → kod dla interfejsu. Kilka kodów backendu
+// dostaje ten sam komunikat; nieznany kod (np. internal_error) to ogólny błąd serwera.
+const BACKEND_CODES = new Map<string, AnalyzeErrorCode>([
+  ["rate_limited", "rate_limited"],
+  ["refused", "refused"],
+  ["invalid_response", "invalid_response"],
+  ["unavailable", "unavailable"],
+  ["timeout", "timeout"],
+  ["misconfigured", "misconfigured"],
+  ["not_configured", "misconfigured"],
+  ["text_too_long", "text_too_long"],
+  ["payload_too_large", "text_too_long"],
+  ["invalid_request", "rejected"],
+]);
 
-const backendErrorSchema = z.object({
-  error: z.object({ code: z.enum(KNOWN_BACKEND_CODES) }),
-});
+const backendErrorSchema = z.object({ error: z.object({ code: z.string() }) });
 
 export async function requestAnalysis(
   request: AnalyzeRequest,
@@ -60,13 +64,15 @@ export async function requestAnalysis(
   if (request.text.trim().length > MAX_TEXT_CHARS) {
     return { ok: false, code: "text_too_long" };
   }
+  // Backend przyjmuje nazwę pliku do 255 znaków; dłuższą (rzadkość) skracamy, zamiast odrzucać.
+  const fileName = request.fileName.slice(0, MAX_FILE_NAME_CHARS);
 
   let response: Response;
   try {
     response = await fetchImpl(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: JSON.stringify({ ...request, fileName }),
       signal: AbortSignal.timeout(TIMEOUT_MS),
     });
   } catch (error) {
@@ -81,5 +87,6 @@ export async function requestAnalysis(
     return parsed.success ? { ok: true, result: parsed.data } : { ok: false, code: "bad_result" };
   }
   const backendError = backendErrorSchema.safeParse(body);
-  return { ok: false, code: backendError.success ? backendError.data.error.code : "server" };
+  const code = backendError.success ? BACKEND_CODES.get(backendError.data.error.code) : undefined;
+  return { ok: false, code: code ?? "server" };
 }

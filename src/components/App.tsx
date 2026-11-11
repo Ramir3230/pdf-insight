@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { requestAnalysis, type AnalyzeErrorCode } from "../api/analyzeClient";
 import { messages } from "../lib/messages";
 import { readPdf, type ReadErrorCode } from "../lib/readPdf";
@@ -15,23 +15,31 @@ type AppState =
   | { step: "analyzeError"; source: AnalyzeRequest; code: AnalyzeErrorCode }
   | { step: "done"; result: AnalysisResult; seconds: number };
 
-// Błędy, po których ponowienie z tym samym tekstem ma sens. Przy pozostałych (za długi tekst,
-// odmowa modelu, brak konfiguracji) trzeba wybrać inny plik.
+// Błędy przejściowe, po których ponowienie z tym samym tekstem ma sens. Przy pozostałych powtórka
+// skończyłaby się tak samo (za długi tekst albo czas, odmowa modelu, odrzucone żądanie, zła
+// konfiguracja, wynik niezgodny ze schematem) — trzeba wybrać inny plik albo odświeżyć stronę.
 const RETRYABLE = new Set<AnalyzeErrorCode>([
   "network",
-  "timeout",
   "rate_limited",
   "invalid_response",
   "unavailable",
-  "bad_result",
   "server",
 ]);
 
 export function App() {
   const [state, setState] = useState<AppState>({ step: "idle" });
-  // Numer ostatniego uruchomienia. Wynik starszego (np. gdy w trakcie wybrano nowy plik albo
-  // kliknięto „Spróbuj ponownie”) jest odrzucany — na ekranie zawsze jest ostatni.
+  // Numer ostatniego uruchomienia. Wynik starszego (gdy w trakcie odczytu albo analizy wybrano
+  // nowy plik) jest odrzucany — na ekranie zawsze jest ostatni.
   const latestRun = useRef(0);
+  const retryRef = useRef<HTMLButtonElement>(null);
+
+  // Po błędzie z możliwością ponowienia fokus idzie na przycisk „Spróbuj ponownie”: z klawiatury
+  // można od razu ponowić, a po kolejnym błędzie fokus nie ginie (kliknięty przycisk znika).
+  useEffect(() => {
+    if (state.step === "analyzeError") {
+      retryRef.current?.focus();
+    }
+  }, [state]);
 
   async function analyze(source: AnalyzeRequest, runId: number, startedAt: number) {
     setState({ step: "analyzing", source });
@@ -109,6 +117,7 @@ export function App() {
           <p>{messages.analyzeErrors[state.code]}</p>
           {RETRYABLE.has(state.code) && (
             <button
+              ref={retryRef}
               type="button"
               className="button button--secondary"
               onClick={() => retry(state.source)}

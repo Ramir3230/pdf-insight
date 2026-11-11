@@ -1,4 +1,4 @@
-import type { AnalyzeErrorCode } from "../api/analyzeClient";
+import type { AnalyzeErrorCode } from "../api/analyzeClient.js";
 import { MAX_FILE_MB } from "./pdfFile.js";
 import type { ReadErrorCode } from "./readPdf.js";
 import { MAX_TEXT_CHARS, type AnalysisResult } from "./schema.js";
@@ -34,7 +34,7 @@ export const messages = {
   // Stan pusty: co użytkownik dostanie, zanim wgra plik.
   intro:
     "Wgraj umowę, fakturę, ofertę albo raport w PDF. Dostaniesz podsumowanie w 3–5 zdaniach, " +
-    "kluczowe punkty, strony i osoby, kwoty, daty oraz plik JSON do pobrania.",
+    "kluczowe punkty, organizacje i osoby, kwoty, daty oraz plik JSON do pobrania.",
   privacyNote:
     "Tekst z pliku zostanie wysłany do analizy przez Claude API (Anthropic). Sam plik PDF " +
     "nie opuszcza przeglądarki.",
@@ -72,8 +72,8 @@ export const messages = {
       `${MAX_TEXT_CHARS.toLocaleString("pl-PL")} znaków tekstu.`,
     network: "Brak połączenia z serwerem analizy. Sprawdź internet i spróbuj ponownie.",
     timeout:
-      "Analiza trwała zbyt długo — dokument może być za długi. Spróbuj ponownie albo wybierz " +
-      "krótszy dokument.",
+      "Analiza trwała zbyt długo — dokument może być za długi. Wybierz krótszy dokument albo " +
+      "spróbuj później.",
     rate_limited: "Za dużo analiz w krótkim czasie. Spróbuj ponownie za kilka minut.",
     refused: "Model AI odmówił analizy tego dokumentu. Spróbuj z innym plikiem.",
     invalid_response:
@@ -82,8 +82,10 @@ export const messages = {
     misconfigured:
       "Serwer analizy nie może teraz korzystać z usługi AI (np. klucz albo limit wydatków). " +
       "Spróbuj później.",
+    rejected: "Serwer odrzucił to żądanie. Spróbuj z innym plikiem.",
     bad_result:
-      "Serwer zwrócił wynik niezgodny ze schematem, więc go nie pokazujemy. Spróbuj ponownie.",
+      "Serwer zwrócił wynik niezgodny ze schematem, więc go nie pokazujemy. Odśwież stronę " +
+      "i spróbuj ponownie.",
     server: "Błąd serwera analizy. Spróbuj ponownie.",
   } satisfies Record<AnalyzeErrorCode, string>,
   result: {
