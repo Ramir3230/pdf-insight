@@ -1,9 +1,40 @@
 # PDF Insight
 
 Aplikacja webowa: wczytuje plik PDF, tworzy krótkie podsumowanie i zamienia treść w uporządkowane
-dane JSON. Zadanie rekrutacyjne na stanowisko Vibe Coder — w budowie.
+dane JSON. Zadanie rekrutacyjne na stanowisko Vibe Coder.
 
 Demo: https://ramir3230.github.io/pdf-insight/
+
+## Jak to działa
+
+1. Użytkownik przeciąga PDF albo wybiera go przyciskiem (jeden plik, do 10 MB).
+2. Przeglądarka sprawdza plik i wyciąga tekst przez pdf.js — sam plik nie opuszcza komputera.
+   Skan bez warstwy tekstowej dostaje czytelny komunikat.
+3. Tekst idzie do backendu (funkcja Vercel), który wywołuje Claude API ze structured outputs.
+   Odpowiedź modelu jest sprawdzana schematem Zod; przy złej odpowiedzi — jedna ponowna próba.
+4. Frontend sprawdza wynik tym samym `schema.ts` i pokazuje podsumowanie, kluczowe punkty,
+   organizacje i osoby, kwoty, daty, słowa kluczowe oraz podgląd JSON z przyciskiem pobrania.
+
+## Podjęte decyzje
+
+- **Tekst wyciąga przeglądarka, nie serwer.** Plik PDF nie trafia na żaden serwer, żądanie do
+  backendu jest małe, a backend nie musi parsować PDF.
+- **Backend jako funkcja Vercel.** GitHub Pages serwuje tylko pliki statyczne, a klucz API nie
+  może być we frontendzie. Klucz jest tylko w zmiennych środowiskowych Vercel.
+- **Claude `claude-opus-5-5` ze structured outputs.** Schemat odpowiedzi to schemat Zod z
+  `src/lib/schema.ts` — ten sam plik waliduje wynik na backendzie i na froncie. `effort: "low"`
+  zmierzony na umowie testowej: 12 stron w ok. 16 s, tekst 186 tys. znaków w ok. 18 s, przy
+  poprawnych typie, kwotach i datach (`scripts/live-check.mjs`). Wyższych poziomów nie
+  mierzyliśmy — limit to 30 s od wgrania do wyniku.
+- **Podsumowanie od modelu jako lista 3–5 zdań**, sklejana na backendzie w jeden tekst: liczbę
+  elementów listy da się sprawdzić schematem, a liczenie kropek myli się na „sp. z o.o.”.
+- **Prompt injection:** polecenia tylko w prompcie systemowym; tekst dokumentu w osobnym bloku
+  danych z neutralizowanymi znacznikami; odpowiedź ograniczona schematem; nazwa pliku nie
+  trafia do modelu. Sprawdzone na umowie testowej (ukryte polecenie dla AI) i na fakturze
+  z poleceniem, które próbuje zamknąć blok danych — polecenia niewykonane.
+- **Limity i koszty:** plik do 10 MB, tekst do 200 000 znaków, 10 analiz na 10 minut z jednego
+  IP, limit wydatków ustawiony na kluczu API. Złe żądania odpadają, zanim cokolwiek kosztują.
+- **Jedna strona bez routera** — nie ma czego routować, a GitHub Pages nie obsługuje ścieżek SPA.
 
 ## Architektura
 
@@ -154,7 +185,13 @@ Każda zależność ma powód. Bez zależności „na zapas”.
 ## Znane ograniczenia
 
 - Tekst dokumentu do 200 000 znaków (ok. 60–70 tys. tokenów); dłuższy backend odrzuca
-  z komunikatem. Dzielenia długich dokumentów na fragmenty (F-08) nie ma.
+  z komunikatem. Dzielenia długich dokumentów na fragmenty (F-08) nie ma. Czas dla tekstu
+  bliskiego limitu zmierzony na umowie testowej powtórzonej 9 razy (ok. 18 s); dokument
+  o bardziej zróżnicowanej treści może trwać dłużej — po 25 s próba kończy się komunikatem.
+- Historii ostatnich wyników (F-09) nie ma.
+- Interfejs sprawdzony ręcznie w przeglądarce Chromium (Chrome/Edge) na desktopie i przy
+  szerokości 360 px — nie w Safari ani Firefox. Komponenty React nie mają testów
+  automatycznych; logika (sprawdzenie pliku, odczyt PDF, klient API, formatowanie, backend) ma.
 - Limit żądań (10 analiz na 10 minut z jednego IP) jest w pamięci funkcji Vercel: znika przy
   zimnym starcie, a równoległe instancje liczą osobno. To ochrona przed prostym nadużyciem;
   twardą granicą kosztów jest limit wydatków ustawiony na kluczu API.
