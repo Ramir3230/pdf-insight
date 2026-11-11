@@ -177,5 +177,11 @@ ANTHROPIC_API_KEY` wpisuje sam — agent nie widzi wartości.
       lokalne, zmienne środowiskowe, znane ograniczenia; w AI_LOG wybrać 3–5 kluczowych promptów.
 - [ ] **10. Przegląd z właścicielem** — recenzent po pełnym diffie; właściciel przechodzi każdy
       plik i umie go objaśnić.
+      Recenzent po pełnym diffie `main...feat/analyze` (11.11, ok. 02:20): gotowe do merge'a
+      z uwagami, bez blokerów. Poprawione: PDF bez stron, żądanie sprawdzane wspólnym schematem
+      przed wysłaniem, ponowienie po przekroczeniu czasu, liczby i opisy w README i AI_LOG.
+      Do właściciela: rozbieżność `CLAUDE.md` („`messages.parse`”) z kodem, wybór kluczowych
+      promptów (propozycja w AI_LOG), zrzut ekranu po deployu. Backend na produkcji z commita
+      `09444c1`.
 - [ ] **11. Oddanie** (właściciel) — formularz kandydata: repozytorium w polu „Link do zadania
       testowego”, demo w polu „Komentarz do zadania”, forma współpracy i oczekiwania finansowe.
