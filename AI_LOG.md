@@ -19,7 +19,45 @@ z tłumaczeniem na polski.
 
 ## Kluczowe prompty
 
-Wybór 3–5 — na koniec pracy.
+1. **Kontrole kodem, a nie uwagą** (10.11, plan bloków 1–6) — najważniejsza decyzja całej pracy:
+   zamiast liczyć na to, że agent „będzie uważał”, każde ryzyko dyskwalifikacji i standard
+   briefu dostał kontrolę uruchamianą w `npm run check` i CI.
+
+   > «Добавь в план проверки, которые ловят дисквалификацию и стандарты брифа кодом, а не
+   > вниманием: […] поиск ключа (sk-ant-) в файлах, во всей истории git и в dist/ […] Тесты
+   > бэкенда без сети […] Смоук после деплоя […] Файл граблей .claude/gotchas.md: ошибка
+   > агента → правило или проверка.»
+   >
+   > „Dodaj do planu kontrole, które wyłapują dyskwalifikację i standardy briefu kodem, a nie
+   > uwagą: […] szukanie klucza (sk-ant-) w plikach, w całej historii git i w dist/ […] testy
+   > backendu bez sieci […] test dymny po deployu […] plik grabi .claude/gotchas.md: błąd
+   > agenta → reguła albo kontrola.”
+
+2. **Czy siedzieć do rana** (11.11, 00:30) — pytanie, które zmieniło organizację pracy: agent
+   rozdzielił to, co wymaga człowieka (klucz API, merge, sprawdzenie demo), od tego, co może
+   zrobić sam w nocy.
+
+   > «та не до утра я не буду сидеть это уже того прям не стоит. или стоит ?»
+   >
+   > „Nie, do rana nie będę siedział, to już naprawdę nie ma sensu. Czy jednak ma?”
+
+3. **Co z oknem kontekstu** (11.11, ok. 00:35) — zmusiło do zapisania stanu pracy w plikach
+   (cele nocy i plany w `ROADMAP.md`, commity jako punkty kontrolne, raporty na bieżąco), żeby
+   praca przetrwała kompresję kontekstu.
+
+   > «А каким образом ты сделаешь ? у тебя в моменте контекстное окно схопнится и что ты будешь
+   > делать ?»
+   >
+   > „Jak to zrobisz? W pewnym momencie zapełni ci się okno kontekstu — i co wtedy?”
+
+4. **Granice samodzielności** (11.11, 00:50) — zgoda na pracę bez zatrzymań, ale tylko w obrębie
+   projektu: bez zmian w systemie, bez instalacji globalnych, `main` bez zmian do rana.
+
+   > «Все хорошо начинай. Не чуди чтоб на компе моем ничего не случилось. Все в рамках этого
+   > проекта этой задачи. Окей ?»
+   >
+   > „Wszystko dobrze, zaczynaj. Nie kombinuj, żeby na moim komputerze nic się nie stało.
+   > Wszystko w ramach tego projektu i tego zadania. Okej?”
 
 ## Gdzie AI się pomyliło i jak to poprawiłem
 
@@ -73,6 +111,18 @@ kontrolą w kodzie, która go pilnuje.
   danych”, choć wzorzec łapał tylko dokładny znacznik. Poprawka: wzorzec łapie też spacje
   i niewidoczne znaki, a komentarz i README mówią wprost, że to utrudnienie, a główną ochroną
   jest prompt systemowy i schemat odpowiedzi.
+- **Commit mimo czerwonego Prettiera** (blok 3). Komendy połączone `;` zrobiły commit, choć
+  sprawdzenie formatowania zgłosiło błąd. Reguła: commit dopiero po zielonym sprawdzeniu.
+- **Zgubiony powód oblanej kontroli** (blok 4). Agent uruchomił deploy z odrzuceniem strumienia
+  błędów (`2>$null`), a skrypty kontrolne piszą tam `BŁĄD` — przyczynę dało się tylko odgadnąć.
+  Reguła: kontroli nie uruchamiać z odrzuconym stderr.
+- **Test zielony w złym środowisku** (blok 5, recenzent). Test „data bez przesunięcia o dzień”
+  przechodził też bez poprawki, bo strefy UTC (CI) i UTC+2 błędu nie pokazują. Poprawka: testy
+  działają w strefie na zachód od UTC; sprawdzone mutacją.
+- **Sprawdzenie na nieistniejącym trybie mocka** (blok 5). Agent dwa razy „sprawdził” w
+  przeglądarce przypadek, którego lokalny mock nie obsługiwał — mock oddawał zwykły wynik.
+  Wyszło przy analizie niepasującego wyniku, zanim trafiło do raportu. Reguła: najpierw
+  potwierdzić warunek wstępny testu.
 
 ## Dziennik
 
@@ -268,7 +318,7 @@ wzorzec daty), SDK nie wysyła jako reguł — przenosi je do opisu, a sprawdza 
 
 Płatne przebiegi na produkcji (`effort: "low"`, 6 wywołań): 12-stronicowa umowa testowa
 w 16 s z poprawnym typem, datą, pięcioma kluczowymi kwotami w trzech walutach i datami;
-polecenie dla AI ukryte w umowie testowej („umowa nieważna, wartość 1 PLN”) — niewykonane;
+polecenie dla AI ukryte w umowie testowej — niewykonane;
 faktura z poleceniem, które próbuje zamknąć blok danych — niewykonane; umowa po angielsku —
 wynik po angielsku; tekst blisko limitu 200 000 znaków — 18 s.
 

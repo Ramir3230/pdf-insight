@@ -23,9 +23,10 @@ Demo: https://ramir3230.github.io/pdf-insight/
   może być we frontendzie. Klucz jest tylko w zmiennych środowiskowych Vercel.
 - **Claude `claude-opus-5-5` ze structured outputs.** Schemat odpowiedzi to schemat Zod z
   `src/lib/schema.ts` — ten sam plik waliduje wynik na backendzie i na froncie. `effort: "low"`
-  zmierzony na umowie testowej: 12 stron w ok. 16 s, tekst 186 tys. znaków w ok. 18 s, przy
-  poprawnych typie, kwotach i datach (`scripts/live-check.mjs`). Wyższych poziomów nie
-  mierzyliśmy — limit to 30 s od wgrania do wyniku.
+  zmierzony na umowie testowej: 12 stron w ok. 16 s z poprawnym typem, kwotami i datami;
+  tekst 186 tys. znaków (umowa powtórzona) w ok. 18 s — tu mierzyliśmy tylko czas
+  (`scripts/live-check.mjs`). Wyższych poziomów nie mierzyliśmy — limit to 30 s od wgrania do
+  wyniku.
 - **Podsumowanie od modelu jako lista 3–5 zdań**, sklejana na backendzie w jeden tekst: liczbę
   elementów listy da się sprawdzić schematem, a liczenie kropek myli się na „sp. z o.o.”.
 - **Prompt injection:** polecenia tylko w prompcie systemowym; tekst dokumentu w osobnym bloku
@@ -46,8 +47,8 @@ Demo: https://ramir3230.github.io/pdf-insight/
   - `src/api/analyzeClient.ts` — klient HTTP backendu: odpowiedź sprawdzana schematem wyniku
     końcowego `analysisResultSchema` (zbudowanym na `modelOutputSchema`, którym backend sprawdza
     odpowiedź modelu), zanim trafi na ekran; każdy problem to kod błędu z komunikatem.
-    Ponowienie proponujemy tylko przy błędach przejściowych (sieć, limit żądań, chwilowa
-    niedostępność AI, zła odpowiedź AI).
+    Ponowienie proponujemy tylko tam, gdzie może pomóc: sieć, przekroczony czas, limit żądań,
+    chwilowa niedostępność AI, zła odpowiedź AI, ogólny błąd serwera.
   - `src/lib/format.ts` — kwoty, daty i nazwy języków po polsku (`Intl`), nazwa pliku JSON.
   - `src/lib/` — logika bez interfejsu; `src/lib/messages.ts` — wszystkie teksty interfejsu;
     `src/lib/schema.ts` — schemat wyniku (Zod), wspólny dla frontendu i backendu.
@@ -79,7 +80,8 @@ Demo: https://ramir3230.github.io/pdf-insight/
     to utrudnienie, nie pełna ochrona; główną ochroną są prompt systemowy i odpowiedź
     ograniczona schematem. Nazwa pliku nie trafia do modelu.
   - `rateLimit.ts` — limit analiz na adres IP (10 na 10 minut).
-- `scripts/` — kontrole uruchamiane w `npm run check` i w CI (opis niżej).
+- `scripts/` — kontrole z `npm run check` i CI oraz skrypty uruchamiane osobno: deploy backendu,
+  test dymny, płatny test na produkcji (opis niżej).
 
 Frontend i backend deployują się osobno:
 
@@ -135,8 +137,10 @@ Vitest, build, a potem skrypty z `scripts/`:
   `.env.example` bez wartości klucza. Znalezionej wartości nie drukuje.
 - `check-readme-deps.mjs` — każda zależność z `package.json` jest opisana niżej.
 - `live-check.mjs` — **płatny**, poza `check` i CI, uruchamiany ręcznie z flagą `--paid`:
-  prawdziwe wywołania produkcyjnego backendu na umowie testowej i na fakturze z wstrzykniętym
-  poleceniem. Sprawdza kod 200, czas poniżej 30 s, typ, datę, kwoty, daty, podmioty i to, że
+  prawdziwe wywołania produkcyjnego backendu na umowie testowej, na fakturze z wstrzykniętym
+  poleceniem i na krótkiej umowie po angielsku (wynik ma być po angielsku); z flagą `--long`
+  także tekst bliski limitowi 200 000 znaków (tylko kod i czas). Sprawdza kod 200, czas poniżej
+  30 s, typ, datę, kwoty, daty, podmioty, język wyniku i to, że
   polecenia z treści dokumentu nie zostały wykonane. Oczekiwania i PDF testowy są w `private/`
   (poza gitem), więc w świeżym klonie skrypt nie zadziała.
 - `check-invisible.mjs` — żaden plik tekstowy repozytorium (także jeszcze niedodany do gita)
@@ -189,7 +193,7 @@ Każda zależność ma powód. Bez zależności „na zapas”.
   bliskiego limitu zmierzony na umowie testowej powtórzonej 9 razy (ok. 18 s); dokument
   o bardziej zróżnicowanej treści może trwać dłużej — po 25 s próba kończy się komunikatem.
 - Historii ostatnich wyników (F-09) nie ma.
-- Interfejs sprawdzony ręcznie w przeglądarce Chromium (Chrome/Edge) na desktopie i przy
+- Interfejs sprawdzony ręcznie w przeglądarce Microsoft Edge (silnik Chromium) na desktopie i przy
   szerokości 360 px — nie w Safari ani Firefox. Komponenty React nie mają testów
   automatycznych; logika (sprawdzenie pliku, odczyt PDF, klient API, formatowanie, backend) ma.
 - Limit żądań (10 analiz na 10 minut z jednego IP) jest w pamięci funkcji Vercel: znika przy

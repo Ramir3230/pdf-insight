@@ -16,12 +16,13 @@ export default defineConfig({
   base: "/pdf-insight/",
   plugins: [react(), buildIdPlugin],
   build: {
-    // Bundle to ok. 670 kB (ok. 205 kB gzip), z czego ok. 450 kB to pdf.js. Domyślny próg
-    // ostrzeżenia to 500 kB. Leniwe ładowanie pdf.js pozwoliłoby narysować stronę chwilę
-    // wcześniej i ukryć pobieranie za czasem wyboru pliku, ale zysk jest mały, a koszt to
+    // Bundle to ok. 760 kB (ok. 230 kB gzip, stan na 11.11), z czego ok. 450 kB to pdf.js.
+    // Domyślny próg ostrzeżenia to 500 kB. Leniwe ładowanie pdf.js pozwoliłoby narysować stronę
+    // chwilę wcześniej i ukryć pobieranie za czasem wyboru pliku, ale zysk jest mały, a koszt to
     // dodatkowy stan „ładuję pdf.js”, obsługa błędu pobrania i przekazywanie loadera przez
-    // moduły (testy w Node działają bez workera). Wybrana prostota; próg z zapasem na wyniki.
-    chunkSizeWarningLimit: 800,
+    // moduły (testy w Node działają bez workera). Wybrana prostota. Próg 900 kB ostrzeże, gdyby
+    // bundle niespodziewanie urósł.
+    chunkSizeWarningLimit: 900,
   },
   test: {
     include: ["src/**/*.test.ts", "server/**/*.test.ts"],
